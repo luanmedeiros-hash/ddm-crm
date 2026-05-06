@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'CRM Baldada',
-  description: 'Acmpanhamento diário de Planejamento Patrimonial',
+  description: 'Acompanhamento diário de Planejamento Patrimonial',
 };
 
 export default function RootLayout({
