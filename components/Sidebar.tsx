@@ -1,55 +1,69 @@
-'use client'
-import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '../lib/supabase'
+'use client';
 
-const LIDER_NAV = [
-  { href: '/dashboard', label: 'Visão Geral', icon: '◈' },
-  { href: '/dashboard/alertas', label: 'Alertas', icon: '⚠' },
-]
-const LIDERADO_NAV = [
-  { href: '/daily', label: 'Minha Daily', icon: '✦' },
-]
+import React from 'react';
+import Icon from './Icon';
+import Avatar from '@/app/dashboard/components/Avatar';
+import { CONSULTORES, isNovo } from '@/lib/constants';
+import type { Status } from '@/lib/types';
 
-export default function Sidebar({ nome, role }: { nome: string; role: string }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
-  const items = role === 'lider' ? LIDER_NAV : LIDERADO_NAV
+export interface ConsultorAtivo {
+  nome: string;
+  status: Status;
+  ind: number;
+  ativo: boolean;
+}
 
-  const logout = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
+interface Props {
+  ativos: ConsultorAtivo[];
+  ativosCount: number;
+  activeTab: string;
+  filtroConsultor: string;
+  onTabChange: (tab: string) => void;
+  onConsultorClick: (nome: string) => void;
+}
 
+const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string } }[] = [
+  { key: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { key: 'conversao', icon: 'funnel', label: 'Conversão' },
+  { key: 'alertas', icon: 'alert', label: 'Alertas' },
+  { key: 'bloqueios', icon: 'block', label: 'Bloqueios' },
+  { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
+  { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' } },
+  { key: 'bigpoints', icon: 'star', label: 'Big Points' },
+  { key: 'simulador', icon: 'sim', label: 'Simulador' },
+];
+
+export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick }: Props) {
   return (
     <aside className="sidebar">
       <div className="brand-card">
-        <div className="brand-logo">DDM</div>
-        <div className="brand-subtitle">Daily Direct Meeting</div>
+        <div className="brand-logo">🪣</div>
+        <div className="brand-text">CRM Baldada</div>
       </div>
-      <div style={{ padding: '8px 0', flex: 1 }}>
-        <div className="sidebar-section">{role === 'lider' ? 'Gestão' : 'Minha área'}</div>
-        {items.map(item => (
-          <button
-            key={item.href}
-            className={`nav-item ${pathname === item.href ? 'active' : ''}`}
-            onClick={() => router.push(item.href)}
-          >
-            <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
+      <div className="toggle-group">
+        <button className={`toggle-pill ${activeTab !== 'modo-daily' ? 'active' : ''}`} onClick={() => onTabChange('dashboard')}>Visão Geral</button>
+        <button className={`toggle-pill ${activeTab === 'modo-daily' ? 'active' : ''}`} onClick={() => onTabChange('modo-daily')}>Modo Daily</button>
+      </div>
+      <div className="nav-section-label">Menu</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {NAV_ITEMS.map(n => (
+          <div key={n.key} className={`nav-item ${activeTab === n.key ? 'active' : ''}`} onClick={() => onTabChange(n.key)}>
+            <Icon name={n.icon} size={16} className="nav-icon" />
+            <span>{n.label}</span>
+            {n.badge && <span className={`nav-badge ${n.badge.cls}`}>{n.badge.txt}</span>}
+          </div>
         ))}
       </div>
-      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--line)' }}>
-        <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--muted)' }}>
-          <div style={{ fontWeight: 600, color: 'var(--text-dim)' }}>{nome}</div>
-          <div style={{ fontSize: 11, marginTop: 2 }}>{role === 'lider' ? '👑 Líder' : '👤 Consultor'}</div>
+      <div className="nav-group-header"><span>Consultores</span><span className="nav-badge count">{ativosCount}</span></div>
+      <div>{ativos.map(a => (
+        <div key={a.nome} className={`active-item ${!a.ativo ? 'muted' : ''} ${filtroConsultor === a.nome ? 'selected' : ''}`} onClick={() => onConsultorClick(a.nome)}>
+          <Avatar name={a.nome} variant={a.status === 'Crítico' ? 'crit' : 'gold'} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.nome}{isNovo(a.nome) && <span className="new-badge">NOVO</span>}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>{a.ativo ? `${a.ind.toFixed(0)}% atingimento` : 'Sem dados'}</div>
+          </div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={logout} style={{ width: '100%', justifyContent: 'center' }}>
-          Sair
-        </button>
-      </div>
+      ))}</div>
     </aside>
-  )
+  );
 }
