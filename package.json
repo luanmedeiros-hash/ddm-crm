@@ -1,19 +1,28 @@
 {
   "name": "ddm-crm",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "private": true,
-  "scripts": { "dev": "next dev", "build": "next build", "start": "next start" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
   "dependencies": {
-    "next": "14.2.3",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "chart.js": ">4.4.6",
+    "next": "14.2.18",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.43.4",
-    "@supabase/ssr": "^0.3.0"
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.18",
     "typescript": "^5"
   }
 }
