@@ -37,33 +37,63 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
   return (
     <aside className="sidebar">
       <div className="brand-card">
-        <div className="brand-logo">🪣</div>
+        <div className="brand-logo">🞡</div>
         <div className="brand-text">CRM Baldada</div>
       </div>
+
       <div className="toggle-group">
-        <button className={`toggle-pill ${activeTab !== 'modo-daily' ? 'active' : ''}`} onClick={() => onTabChange('dashboard')}>Visão Geral</button>
-        <button className={`toggle-pill ${activeTab === 'modo-daily' ? 'active' : ''}`} onClick={() => onTabChange('modo-daily')}>Modo Daily</button>
+        <button
+          className={`toggle-pill ${activeTab !== 'modo-daily' ? 'active' : ''}`}
+          onClick={() => onTabChange('dashboard')}
+        >
+          Visão Geral
+        </button>
+        <button
+          className={`toggle-pill ${activeTab === 'modo-daily' ? 'active' : ''}`}
+          onClick={() => onTabChange('modo-daily')}
+        >
+          Modo Daily
+        </button>
       </div>
+
       <div className="nav-section-label">Menu</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV_ITEMS.map(n => (
-          <div key={n.key} className={`nav-item ${activeTab === n.key ? 'active' : ''}`} onClick={() => onTabChange(n.key)}>
+          <div
+            key={n.key}
+            className={`nav-item ${activeTab === n.key ? 'active' : ''}`}
+            onClick={() => onTabChange(n.key)}
+          >
             <Icon name={n.icon} size={16} className="nav-icon" />
             <span>{n.label}</span>
             {n.badge && <span className={`nav-badge ${n.badge.cls}`}>{n.badge.txt}</span>}
           </div>
         ))}
       </div>
-      <div className="nav-group-header"><span>Consultores</span><span className="nav-badge count">{ativosCount}</span></div>
-      <div>{ativos.map(a => (
-        <div key={a.nome} className={`active-item ${!a.ativo ? 'muted' : ''} ${filtroConsultor === a.nome ? 'selected' : ''}`} onClick={() => onConsultorClick(a.nome)}>
-          <Avatar name={a.nome} variant={a.status === 'Crítico' ? 'crit' : 'gold'} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.nome}{isNovo(a.nome) && <span className="new-badge">NOVO</span>}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>{a.ativo ? `${a.ind.toFixed(0)}% atingimento` : 'Sem dados'}</div>
+
+      <div className="nav-group-header">
+        <span>Consultores</span>
+        <span className="nav-badge count">{ativosCount}</span>
+      </div>
+      <div>
+        {ativos.map(a => (
+          <div
+            key={a.nome}
+            className={`active-item ${!a.ativo ? 'muted' : ''} ${filtroConsultor === a.nome ? 'selected' : ''}`}
+            onClick={() => onConsultorClick(a.nome)}
+          >
+            <Avatar name={a.nome} variant={a.status === 'Crítico' ? 'crit' : 'gold'} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {a.nome}{isNovo(a.nome) && <span className="new-badge">NOVO</span>}
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>
+                {a.ativo ? `${a.ind.toFixed(0)}% atingimento` : 'Sem dados'}
+              </div>
+            </div>
           </div>
-        </div>
-      ))}</div>
+        ))}
+      </div>
     </aside>
   );
 }
