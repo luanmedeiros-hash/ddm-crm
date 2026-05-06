@@ -1,2 +1,18 @@
-import { redirect } from 'next/navigation'
-export default function Home() { redirect('/dashboard') }
+import { redirect } from 'next/navigation';
+import { getSupabaseServer } from '@/lib/supabase-server';
+
+export default async function HomePage() {
+  const supabase = await getSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) redirect('/login');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role === 'lider') redirect('/dashboard');
+  redirect('/daily');
+}
