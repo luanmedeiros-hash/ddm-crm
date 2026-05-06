@@ -1,28 +1,36 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import DailyForm from './DailyForm'
+import { redirect } from 'next/navigation';
+import { getSupabaseServer } from '@/lib/supabase-server';
+import type { RegistroDaily } from '@/lib/types';
+import DailyForm from './DailyForm';
+
+export const dynamic = 'force-dynamic';
 
 export default async function DailyPage() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (n) => cookieStore.get(n)?.value, set: () => {}, remove: () => {} } }
-  )
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-  if (!profile) redirect('/login')
-  const hoje = new Date().toISOString().split('T')[0]
-  const { data: reg } = await supabase
-    .from('registros_daily').select('*').eq('user_id', user.id).eq('data', hoje).single()
+  const supabase = await getSupabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, email, nome, consultor_nome, role')
+    .eq('id', user.id)
+    .single();
+
+  // Busca registro de hoje (se existir, vamos editar)
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data: registroHoje } = await supabase
+    .from('registros_daily')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('data', hoje)
+    .maybeSingle();
+
   return (
     <DailyForm
       userId={user.id}
-      consultor={profile.consultor_nome || profile.nome}
-      registroExistente={reg || null}
-      hoje={hoje}
+      consultorNome={profile?.consultor_nome || profile?.nome || profile?.email?.split('@')[0] || 'Consultor'}
+      registroExistente={registroHoje as RegistroDaily | null}
+      isLider={profile?.role === 'lider'}
     />
-  )
+  );
 }

@@ -1,230 +1,488 @@
-'use client'
-import { useState, useMemo } from 'react'
-import { CONSULTORES, ETAPAS, SIGNIFICADOS, calcIndice, classificar } from '../../lib/constants'
+'use client';
 
-function StatusPill({ status }: { status: string }) {
-  const cls = status === 'Crítico' ? 'crit' : status === 'Atenção' ? 'warn' : status === 'Normal' ? 'ok' : 'muted'
-  return <span className={`pill pill-${cls}`}>{status}</span>
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { calcConversoes, calcIndice, classificar, fmtData, fmtDataBR, regsValidos, intervaloUltimosDias, ultimosDiasUteis, tipoDia } from '@/lib/calculos';
+import { CONSULTORES, METRICAS_4 } from '@/lib/constants';
+import type { RegInterno } from '@/lib/types';
+import Sidebar, { type ConsultorAtivo } from '@/components/Sidebar';
+import Icon from '@/components/Icon';
+import Avatar from './components/Avatar';
+import SparkLine from './components/SparkLine';
+import ModalConsultor from './ModalConsultor';
+
+import Dashboard from './secoes/Dashboard';
+import Conversao from './secoes/Conversao';
+import Alertas from './secoes/Alertas';
+import Bloqueios from './secoes/Bloqueios';
+import Ranking from './secoes/Ranking';
+import Historico from './secoes/Historico';
+import BigPoints from './secoes/BigPoints';
+import Simulador from './secoes/Simulador';
+import ModoDaily from './secoes/ModoDaily';
+
+interface Props {
+  registros: RegInterno[];        // todos os registros (já convertidos)
+  userEmail: string;
+  userName: string;
 }
 
-function Bar({ value }: { value: number }) {
-  const cls = value >= 80 ? 'ok' : value >= 50 ? 'warn' : 'crit'
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div className="progress-wrap" style={{ flex: 1 }}>
-        <div className={`progress-bar ${cls}`} style={{ width: `${Math.min(value, 100)}%` }} />
-      </div>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', minWidth: 36 }}>
-        {value.toFixed(0)}%
-      </span>
-    </div>
-  )
-}
+export default function DashboardClient({ registros, userEmail, userName }: Props) {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [periodo, setPeriodo] = useState('semanal');
+  const [filtroConsultor, setFiltroConsultor] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [selectedConsultor, setSelectedConsultor] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; isError?: boolean } | null>(null);
 
-export default function DashboardClient({ registros }: { registros: any[] }) {
-  const [periodo, setPeriodo] = useState<'hoje'|'7d'|'30d'>('30d')
-  const [selected, setSelected] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<'mail' | 'bell' | 'user' | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Datas referência: último dia útil
+  const diasUteis = useMemo(() => ultimosDiasUteis(30), []);
+  const dataRef = diasUteis[diasUteis.length - 1] ? fmtData(diasUteis[diasUteis.length - 1]) : fmtData(new Date());
+
+  // Range conforme período
   const range = useMemo(() => {
-    const today = new Date()
-    const days = periodo === 'hoje' ? 0 : periodo === '7d' ? 6 : 29
-    const dates: string[] = []
-    for (let i = days; i >= 0; i--) {
-      const d = new Date(today); d.setDate(d.getDate() - i)
-      dates.push(d.toISOString().split('T')[0])
+    if (periodo === 'diario') return [dataRef];
+    if (periodo === 'semanal') {
+      const idx = diasUteis.findIndex(d => fmtData(d) === dataRef);
+      if (idx < 0) return [dataRef];
+      const start = Math.max(0, idx - 4);
+      return diasUteis.slice(start, idx + 1).map(fmtData);
     }
-    return dates
-  }, [periodo])
-
-  const filtered = registros.filter(r => range.includes(r.data))
-
-  const stats = useMemo(() => CONSULTORES.map(nome => {
-    const regs = filtered.filter(r => r.consultor === nome)
-    const ult = [...regs].sort((a, b) => b.data.localeCompare(a.data))[0] || null
-    return {
-      nome,
-      indice: calcIndice(regs),
-      status: ult ? classificar(ult) : 'Sem dados',
-      pp: regs.reduce((s, r) => s + (r.PP_real || 0), 0),
-      rec: regs.reduce((s, r) => s + (r.REC_real || 0), 0),
-      dias: new Set(regs.map(r => r.data)).size,
-      ult
+    if (periodo === 'mensal') {
+      const ref = new Date(dataRef + 'T12:00:00');
+      return intervaloUltimosDias(31)
+        .filter(d => d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear() && tipoDia(d) === 'util')
+        .map(fmtData);
     }
-  }).sort((a, b) => b.indice - a.indice), [filtered])
+    return diasUteis.map(fmtData);
+  }, [periodo, dataRef, diasUteis]);
 
-  const top3 = stats.filter(c => c.ult).slice(0, 3)
-  const indiceGeral = stats.reduce((s, c) => s + c.indice, 0) / CONSULTORES.length
-  const totalPP = filtered.reduce((s, r) => s + (r.PP_real || 0), 0)
-  const totalREC = filtered.reduce((s, r) => s + (r.REC_real || 0), 0)
+  const todosValidos = useMemo(() => regsValidos(registros), [registros]);
 
-  const alertas = useMemo(() => {
-    const arr: any[] = []
-    const hoje = new Date().toISOString().split('T')[0]
-    const preencheramHoje = new Set(registros.filter(r => r.data === hoje).map(r => r.consultor))
+  const filtered = useMemo(() => {
+    return todosValidos.filter(r => {
+      if (!range.includes(r.data)) return false;
+      if (filtroConsultor && r.consultor !== filtroConsultor) return false;
+      if (filtroStatus === 'bloqueio' && r.bloqueio === 'Sem bloqueio') return false;
+      if (filtroStatus === 'ajuda' && r.ajuda !== 'Sim') return false;
+      if (filtroStatus === 'risco' && classificar(r) !== 'Crítico') return false;
+      return true;
+    });
+  }, [todosValidos, range, filtroConsultor, filtroStatus]);
+
+  const conv = useMemo(() => calcConversoes(filtered), [filtered]);
+  const dataAlvo = range[range.length - 1] || dataRef;
+  const consultoresPreencheram = new Set(todosValidos.filter(r => r.data === dataAlvo).map(r => r.consultor));
+
+  const ativos: ConsultorAtivo[] = useMemo(() => {
+    return CONSULTORES.map(c => {
+      const regs = filtered.filter(r => r.consultor === c);
+      const ult = regs.length ? [...regs].sort((a, b) => b.data.localeCompare(a.data))[0] : null;
+      const status = ult ? classificar(ult) : 'Sem dados' as const;
+      const ind = calcIndice(regs).indice;
+      return { nome: c, status, ind, ativo: regs.length > 0 };
+    });
+  }, [filtered]);
+  const ativosCount = ativos.filter(a => a.ativo).length;
+
+  const metricsSpark = useMemo(() => {
+    return METRICAS_4.map(m => range.map(d => calcConversoes(filtered.filter(r => r.data === d))[m.key as keyof ReturnType<typeof calcConversoes>] as number));
+  }, [filtered, range]);
+
+  const metricsTrend = useMemo(() => {
+    return METRICAS_4.map(m => {
+      const half = Math.floor(range.length / 2);
+      if (half < 1) return { delta: 0, dir: 'flat' as const };
+      const r1 = filtered.filter(r => range.slice(0, half).includes(r.data));
+      const r2 = filtered.filter(r => range.slice(half).includes(r.data));
+      const v1 = calcConversoes(r1)[m.key as keyof ReturnType<typeof calcConversoes>] as number;
+      const v2 = calcConversoes(r2)[m.key as keyof ReturnType<typeof calcConversoes>] as number;
+      const delta = v2 - v1;
+      return { delta, dir: delta > 2 ? 'up' as const : delta < -2 ? 'down' as const : 'flat' as const };
+    });
+  }, [filtered, range]);
+
+  const showToastMsg = (msg: string, isError?: boolean) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // Atalhos de teclado
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchRef.current?.focus(), 50);
+      }
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+        setOpenDropdown(null);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Click outside dropdowns
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.dropdown-anchor') && !target.closest('.search-box')) {
+        setOpenDropdown(null);
+        setShowSearch(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Search
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    const consultores = CONSULTORES.filter(c => c.toLowerCase().includes(q));
+    const bigPoints: { texto: string; consultor: string; data: string }[] = [];
+    const bloqueios: { tipo: string; desc: string; consultor: string; data: string }[] = [];
+    todosValidos.forEach(r => {
+      (r.bigPoints || []).forEach(bp => {
+        if (bp.toLowerCase().includes(q)) bigPoints.push({ texto: bp, consultor: r.consultor, data: r.data });
+      });
+      if (r.bloqueio !== 'Sem bloqueio' && (r.bloqueio.toLowerCase().includes(q) || (r.bloqueioDesc || '').toLowerCase().includes(q))) {
+        bloqueios.push({ tipo: r.bloqueio, desc: r.bloqueioDesc, consultor: r.consultor, data: r.data });
+      }
+    });
+    return { consultores, bigPoints: bigPoints.slice(0, 5), bloqueios: bloqueios.slice(0, 5) };
+  }, [searchQuery, todosValidos]);
+
+  // Notificações
+  const notifAlertas = useMemo(() => {
+    const arr: { tipo: 'crit' | 'warn'; titulo: string; desc: string; who: string }[] = [];
     CONSULTORES.forEach(c => {
-      if (!preencheramHoje.has(c)) arr.push({ lvl: 'warn', titulo: 'Sem preenchimento hoje', quem: c })
-    })
-    filtered.filter(r => r.ajuda).forEach(r =>
-      arr.push({ lvl: 'crit', titulo: 'Pediu apoio do gestor', quem: r.consultor, desc: r.observacoes }))
-    filtered.filter(r => r.confianca <= 2).forEach(r =>
-      arr.push({ lvl: 'crit', titulo: `Confiança baixa (${r.confianca}/5)`, quem: r.consultor, desc: r.data }))
-    filtered.filter(r => r.bloqueio !== 'Sem bloqueio').forEach(r =>
-      arr.push({ lvl: 'warn', titulo: r.bloqueio, quem: r.consultor, desc: r.bloqueio_desc }))
-    return arr.sort((a, b) => a.lvl === 'crit' ? -1 : 1)
-  }, [filtered, registros])
+      const regs = filtered.filter(r => r.consultor === c);
+      if (!regs.length) return;
+      const indice = calcIndice(regs).indice;
+      if (indice < 40) arr.push({ tipo: 'crit', titulo: 'Índice crítico', desc: `${c} · ${indice.toFixed(0)}% no período`, who: c });
+    });
+    filtered.filter(r => r.ajuda === 'Sim').forEach(r => {
+      arr.push({ tipo: 'crit', titulo: 'Pediu ajuda', desc: `${r.consultor} solicita apoio em ${fmtDataBR(new Date(r.data + 'T12:00:00'))}`, who: r.consultor });
+    });
+    filtered.filter(r => r.bloqueio !== 'Sem bloqueio').slice(0, 5).forEach(r => {
+      arr.push({ tipo: 'warn', titulo: r.bloqueio, desc: `${r.consultor} · ${r.bloqueioDesc}`, who: r.consultor });
+    });
+    return arr.slice(0, 8);
+  }, [filtered]);
 
-  const sel = selected ? stats.find(c => c.nome === selected) : null
+  const mailItems = useMemo(() => {
+    return [...todosValidos].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 6).map(r => ({
+      consultor: r.consultor, data: r.data,
+      avanco: r.avanco || 'Sem novidades', confianca: r.confianca,
+    }));
+  }, [todosValidos]);
+
+  const goToConsultor = (nome: string) => {
+    setSelectedConsultor(nome);
+    setShowSearch(false);
+    setSearchQuery('');
+  };
+  const goToTab = (tab: string) => {
+    setActiveTab(tab);
+    setOpenDropdown(null);
+    setShowSearch(false);
+  };
+  const handleImport = () => fileInputRef.current?.click();
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) showToastMsg(`✓ Arquivo "${f.name}" recebido (mock — sem persistência)`);
+    e.target.value = '';
+  };
+  const handleLogout = async () => {
+    setOpenDropdown(null);
+    const { supabase } = await import('@/lib/supabase');
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+  const handleRefresh = () => {
+    showToastMsg('✓ Recarregando dados...');
+    window.location.reload();
+  };
+
+  const handleConsultorClick = (nome: string) => {
+    setFiltroConsultor(filtroConsultor === nome ? '' : nome);
+  };
+
+  const userInitial = (userName || userEmail || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="page-content">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div className="section-title">Visão Geral da Equipe</div>
-          <div className="section-sub">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {(['hoje', '7d', '30d'] as const).map(p => (
-            <button key={p} onClick={() => setPeriodo(p)}
-              style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid var(--line)', background: periodo === p ? 'rgba(201,169,97,.15)' : 'none', color: periodo === p ? 'var(--gold-soft)' : 'var(--text-dim)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
-              {p === 'hoje' ? 'Hoje' : p}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="app-grid">
+      <Sidebar
+        ativos={ativos}
+        ativosCount={ativosCount}
+        activeTab={activeTab}
+        filtroConsultor={filtroConsultor}
+        onTabChange={setActiveTab}
+        onConsultorClick={handleConsultorClick}
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'Índice Geral', value: `${indiceGeral.toFixed(0)}%`, sub: 'média da equipe', color: 'var(--gold-soft)' },
-          { label: 'PPs no período', value: totalPP, sub: 'pontos de produção', color: 'var(--violet-soft)' },
-          { label: 'Recomendações', value: totalREC, sub: 'geradas', color: 'var(--ok)' },
-          { label: 'Alertas críticos', value: alertas.filter(a => a.lvl === 'crit').length, sub: 'requerem atenção', color: 'var(--crit)' },
-        ].map(kpi => (
-          <div key={kpi.label} className="card card-gold">
-            <div className="card-eyebrow">{kpi.label}</div>
-            <div className="card-value" style={{ color: kpi.color, fontSize: 28 }}>{kpi.value}</div>
-            <div className="card-sub">{kpi.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {top3.length > 0 && (
-        <div className="top3-grid">
-          {top3.map((c, i) => (
-            <div key={c.nome} className="top3-card" onClick={() => setSelected(c.nome)}>
-              <div className="top3-rank">#{i + 1} Atingimento</div>
-              <div className="top3-name">{c.nome}</div>
-              <div className="top3-value">{c.indice.toFixed(0)}%</div>
-              <div style={{ marginTop: 8 }}><Bar value={c.indice} /></div>
-              <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                <StatusPill status={c.status} />
-                <span style={{ fontSize: 11, color: 'var(--muted)', alignSelf: 'center' }}>PP: {c.pp} · REC: {c.rec}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'start' }}>
-        <div className="card">
-          <div style={{ marginBottom: 14, fontWeight: 600, color: 'var(--text)' }}>Consultores · {CONSULTORES.length}</div>
-          <table className="data-table">
-            <thead><tr><th>Consultor</th><th>Índice</th><th>PP</th><th>REC</th><th>Dias</th><th>Status</th></tr></thead>
-            <tbody>
-              {stats.map(c => (
-                <tr key={c.nome} onClick={() => setSelected(c.nome === selected ? null : c.nome)}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,var(--gold),var(--gold-dim))', color: '#060c18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
-                        {c.nome.slice(0, 2).toUpperCase()}
+      <main className="main">
+        {/* TOP BAR */}
+        <div className="top-bar">
+          <div className="search-box dropdown-anchor" style={{ position: 'relative' }}>
+            <Icon name="search" size={14} style={{ color: 'var(--muted)' }} />
+            <input
+              ref={searchRef}
+              placeholder="Buscar consultor, bloqueio, big point..."
+              value={searchQuery}
+              onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
+              onFocus={() => setShowSearch(true)}
+            />
+            <span className="kbd">⌘ F</span>
+            {showSearch && searchResults && (
+              <div className="search-results">
+                {searchResults.consultores.length === 0 && searchResults.bigPoints.length === 0 && searchResults.bloqueios.length === 0 && (
+                  <div className="dropdown-empty">Nenhum resultado para &quot;{searchQuery}&quot;</div>
+                )}
+                {searchResults.consultores.length > 0 && (
+                  <>
+                    <div className="search-result-group">Consultores · {searchResults.consultores.length}</div>
+                    {searchResults.consultores.map(c => (
+                      <div key={c} className="dropdown-item" onClick={() => goToConsultor(c)}>
+                        <Avatar name={c} variant="gold" />
+                        <div className="di-content">
+                          <div className="di-title">{c}</div>
+                          <div className="di-desc">Abrir perfil completo</div>
+                        </div>
                       </div>
-                      <span style={{ color: 'var(--text)', fontWeight: 500 }}>{c.nome}</span>
-                    </div>
-                  </td>
-                  <td style={{ width: 140 }}><Bar value={c.indice} /></td>
-                  <td><strong style={{ color: 'var(--gold-soft)' }}>{c.pp}</strong></td>
-                  <td><strong style={{ color: 'var(--ok)' }}>{c.rec}</strong></td>
-                  <td>{c.dias}d</td>
-                  <td><StatusPill status={c.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card" style={{ maxHeight: 500, overflowY: 'auto' }}>
-          <div style={{ marginBottom: 14, fontWeight: 600, color: 'var(--text)' }}>⚠️ Alertas · {alertas.length}</div>
-          {alertas.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>✓ Nenhum alerta</div>
-          ) : alertas.slice(0, 15).map((a, i) => (
-            <div key={i} className={`alert-row ${a.lvl}`}>
-              <div className="alert-title">{a.titulo}</div>
-              {a.desc && <div className="alert-desc">{a.desc}</div>}
-              <div className="alert-who">→ {a.quem}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {sel && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,12,24,.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' }} onClick={() => setSelected(null)}>
-          <div className="card" style={{ width: '90%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>{sel.nome}</div>
-                <div style={{ marginTop: 4 }}>
-                  <StatusPill status={sel.status} />
-                  <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--text-dim)' }}>Índice: <strong>{sel.indice.toFixed(0)}%</strong></span>
-                </div>
-              </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>✕ Fechar</button>
-            </div>
-            {sel.ult ? (
-              <>
-                <div className="card-eyebrow" style={{ marginBottom: 10 }}>Funil · último registro ({sel.ult.data})</div>
-                <div className="funnel-grid">
-                  {ETAPAS.map(et => {
-                    const meta = sel.ult[`${et}_meta`] || 0
-                    const real = sel.ult[`${et}_real`] || 0
-                    const pct = meta > 0 ? (real / meta) * 100 : 0
-                    const cls = pct >= 80 ? 'ok' : pct >= 50 ? 'warn' : meta > 0 ? 'crit' : ''
-                    return (
-                      <div key={et} className={`stage-cell ${cls}`} title={SIGNIFICADOS[et]}>
-                        <div className="stage-name">{et}</div>
-                        <div><span className="stage-real">{real}</span><span className="stage-meta">/{meta}</span></div>
-                        <div className="stage-pct">{meta > 0 ? `${pct.toFixed(0)}%` : '—'}</div>
+                    ))}
+                  </>
+                )}
+                {searchResults.bigPoints.length > 0 && (
+                  <>
+                    <div className="search-result-group">Big Points · {searchResults.bigPoints.length}</div>
+                    {searchResults.bigPoints.map((bp, i) => (
+                      <div key={i} className="dropdown-item" onClick={() => goToConsultor(bp.consultor)}>
+                        <div className="di-icon ok">⭐</div>
+                        <div className="di-content">
+                          <div className="di-title">{bp.texto}</div>
+                          <div className="di-desc">{bp.consultor} · {fmtDataBR(new Date(bp.data + 'T12:00:00'))}</div>
+                        </div>
                       </div>
-                    )
-                  })}
-                </div>
-                {sel.ult.big_point_1 && (
-                  <div style={{ marginTop: 16 }}>
-                    <div className="card-eyebrow" style={{ marginBottom: 8 }}>Big Points</div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {[sel.ult.big_point_1, sel.ult.big_point_2, sel.ult.big_point_3].filter(Boolean).map((bp, i) => (
-                        <li key={i} style={{ fontSize: 13, color: 'var(--text-dim)' }}>⭐ {bp}</li>
-                      ))}
-                    </ul>
-                  </div>
+                    ))}
+                  </>
                 )}
-                {sel.ult.bloqueio !== 'Sem bloqueio' && (
-                  <div className="alert-row warn" style={{ marginTop: 16 }}>
-                    <div className="alert-title">🚧 {sel.ult.bloqueio}</div>
-                    {sel.ult.bloqueio_desc && <div className="alert-desc">{sel.ult.bloqueio_desc}</div>}
-                  </div>
+                {searchResults.bloqueios.length > 0 && (
+                  <>
+                    <div className="search-result-group">Bloqueios · {searchResults.bloqueios.length}</div>
+                    {searchResults.bloqueios.map((b, i) => (
+                      <div key={i} className="dropdown-item" onClick={() => { goToTab('bloqueios'); setFiltroConsultor(b.consultor); }}>
+                        <div className="di-icon warn">🚧</div>
+                        <div className="di-content">
+                          <div className="di-title">{b.tipo}</div>
+                          <div className="di-desc">{b.consultor} · {b.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
                 )}
-                {sel.ult.prioridade && (
-                  <div style={{ marginTop: 14, padding: 14, background: 'var(--bg-3)', borderRadius: 10 }}>
-                    <div className="card-eyebrow" style={{ marginBottom: 6 }}>Prioridade</div>
-                    <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{sel.ult.prioridade}</div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Sem registros no período.</div>
+              </div>
             )}
           </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div className="dropdown-anchor">
+              <button className="icon-btn" onClick={() => setOpenDropdown(openDropdown === 'mail' ? null : 'mail')} data-tip="Atividade recente">
+                <Icon name="mail" size={16} />
+              </button>
+              {openDropdown === 'mail' && (
+                <div className="dropdown-panel">
+                  <div className="dropdown-header">
+                    <span>Atividade recente da equipe</span>
+                    <button className="clear-btn" onClick={() => goToTab('historico')}>Ver tudo</button>
+                  </div>
+                  {mailItems.length === 0 ? (
+                    <div className="dropdown-empty">Sem atividade registrada</div>
+                  ) : mailItems.map((m, i) => (
+                    <div key={i} className="dropdown-item" onClick={() => goToConsultor(m.consultor)}>
+                      <div className="di-icon ok">{m.consultor.slice(0, 1)}</div>
+                      <div className="di-content">
+                        <div className="di-title">{m.consultor}</div>
+                        <div className="di-desc">{m.avanco}</div>
+                        <div className="di-time">{fmtDataBR(new Date(m.data + 'T12:00:00'))} · confiança {m.confianca}/5</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="dropdown-anchor">
+              <button className="icon-btn" onClick={() => setOpenDropdown(openDropdown === 'bell' ? null : 'bell')} data-tip="Notificações">
+                <Icon name="bell" size={16} />
+                {notifAlertas.length > 0 && <span className="notif-dot">{notifAlertas.length > 9 ? '9+' : notifAlertas.length}</span>}
+              </button>
+              {openDropdown === 'bell' && (
+                <div className="dropdown-panel">
+                  <div className="dropdown-header">
+                    <span>Alertas · {notifAlertas.length}</span>
+                    <button className="clear-btn" onClick={() => goToTab('alertas')}>Ver todos</button>
+                  </div>
+                  {notifAlertas.length === 0 ? (
+                    <div className="dropdown-empty">✓ Nenhum alerta</div>
+                  ) : notifAlertas.map((a, i) => (
+                    <div key={i} className="dropdown-item" onClick={() => goToConsultor(a.who)}>
+                      <div className={`di-icon ${a.tipo}`}>{a.tipo === 'crit' ? '🚨' : '⚠️'}</div>
+                      <div className="di-content">
+                        <div className="di-title">{a.titulo}</div>
+                        <div className="di-desc">{a.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="dropdown-anchor">
+              <button
+                className="user-card"
+                style={{ cursor: 'pointer', background: '#fff', border: '1px solid var(--line)', font: 'inherit', padding: '6px 14px 6px 6px' }}
+                onClick={() => setOpenDropdown(openDropdown === 'user' ? null : 'user')}
+              >
+                <div className="user-avatar">{userInitial}</div>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{userName || 'Gestor'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>{userEmail}</div>
+                </div>
+              </button>
+              {openDropdown === 'user' && (
+                <div className="dropdown-panel" style={{ minWidth: 240 }}>
+                  <div className="dropdown-item" onClick={() => { setOpenDropdown(null); showToastMsg('✓ Perfil em construção'); }}>
+                    <div className="di-icon">👤</div>
+                    <div className="di-content"><div className="di-title">Meu perfil</div></div>
+                  </div>
+                  <div className="dropdown-item" onClick={() => { setOpenDropdown(null); showToastMsg('✓ Configurações em construção'); }}>
+                    <div className="di-icon"><Icon name="settings" size={14} /></div>
+                    <div className="di-content"><div className="di-title">Configurações</div></div>
+                  </div>
+                  <div className="dropdown-item" onClick={handleRefresh}>
+                    <div className="di-icon"><Icon name="refresh" size={14} /></div>
+                    <div className="di-content"><div className="di-title">Recarregar dados</div></div>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--line)', margin: '6px 4px' }}></div>
+                  <div className="dropdown-item" onClick={handleLogout} style={{ color: 'var(--crit)' }}>
+                    <div className="di-icon crit">↪</div>
+                    <div className="di-content"><div className="di-title" style={{ color: 'var(--crit)' }}>Sair</div></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept=".csv,.xlsx,.json" onChange={handleFileSelected} />
         </div>
+
+        {/* SECTION HEADER */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div className="sec-eyebrow">
+              <span className="eyebrow-dot"></span>
+              <span>Dados {periodo === 'diario' ? 'do dia' : periodo === 'semanal' ? 'da semana' : 'do mês'}</span>
+              <span style={{ color: 'var(--primary)' }}>·</span>
+              <span style={{ color: 'var(--text-dim)' }}>{filtered.length} registros</span>
+              <span className="sec-pill">{ativosCount} ativos</span>
+            </div>
+            <h1 className="sec-title">Dashboard</h1>
+            <div className="sec-sub">Acompanhe o funil consultivo da equipe em tempo real.</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="action-btn primary" onClick={handleRefresh}>
+              <Icon name="refresh" size={14} /> Recarregar
+            </button>
+            <button className="action-btn" onClick={handleImport}>
+              <Icon name="upload" size={14} /> Importar
+            </button>
+            <div className="filter-pill">
+              <select value={periodo} onChange={e => setPeriodo(e.target.value)}>
+                <option value="diario">Diário</option>
+                <option value="semanal">Semanal</option>
+                <option value="mensal">Mensal</option>
+                <option value="historico">Histórico</option>
+              </select>
+              <Icon name="chevronDown" size={10} className="caret" />
+            </div>
+            <div className="filter-pill">
+              <select value={filtroConsultor} onChange={e => setFiltroConsultor(e.target.value)}>
+                <option value="">Todos</option>
+                {CONSULTORES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <Icon name="chevronDown" size={10} className="caret" />
+            </div>
+          </div>
+        </div>
+
+        {/* 4 MÉTRICAS — só no Dashboard */}
+        {activeTab === 'dashboard' && (
+          <div className="metrics-grid fade-in">
+            {METRICAS_4.map((m, i) => {
+              const v = conv[m.key as keyof typeof conv] as number;
+              const t = metricsTrend[i];
+              const featured = i === 0;
+              return (
+                <div key={m.key} className={`metric-card ${featured ? 'featured' : ''} clickable`} onClick={() => goToTab('conversao')}>
+                  <div className="metric-head">
+                    <div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, opacity: .7, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>{m.key}</div>
+                      <div className="metric-title">{m.label}</div>
+                    </div>
+                    <div className="metric-arrow">
+                      <Icon name="arrowUpRight" size={14} />
+                    </div>
+                  </div>
+                  <div className="metric-value">
+                    <span className="num">{v.toFixed(1)}</span>
+                    <span className="pct">%</span>
+                  </div>
+                  <div className="metric-foot">
+                    <span className={`metric-delta ${t.dir === 'up' ? 'up' : t.dir === 'down' ? 'down' : ''}`}>
+                      {t.dir === 'up' ? '▲' : t.dir === 'down' ? '▼' : '—'} {Math.abs(t.delta).toFixed(1)}%
+                    </span>
+                    <span>vs início do período</span>
+                  </div>
+                  <SparkLine data={metricsSpark[i]} color={featured ? '#ffffff' : '#0f172a'} height={56} />
+                  <div className="metric-raw">{m.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* SEÇÕES */}
+        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} />}
+        {activeTab === 'conversao' && <Conversao filtered={filtered} />}
+        {activeTab === 'alertas' && <Alertas filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} />}
+        {activeTab === 'bloqueios' && <Bloqueios filtered={filtered} />}
+        {activeTab === 'ranking' && <Ranking filtered={filtered} todosRegs={registros} range={range} onSelect={setSelectedConsultor} />}
+        {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} />}
+        {activeTab === 'bigpoints' && <BigPoints filtered={filtered} onSelect={setSelectedConsultor} />}
+        {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} />}
+        {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} />}
+      </main>
+
+      {selectedConsultor && (
+        <ModalConsultor
+          consultor={selectedConsultor}
+          todosRegs={registros}
+          range={range}
+          onClose={() => setSelectedConsultor(null)}
+        />
       )}
+
+      {toast && <div className={`toast ${toast.isError ? 'error' : ''}`}>{toast.msg}</div>}
     </div>
-  )
+  );
 }

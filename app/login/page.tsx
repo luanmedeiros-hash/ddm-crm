@@ -1,67 +1,83 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '../../lib/supabase'
+'use client';
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    const supabase = createClient()
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password })
-    if (err) {
-      setError('E-mail ou senha incorretos.')
-      setLoading(false)
-      return
+    e.preventDefault();
+    setLoading(true); setError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      router.push('/dashboard');
+      router.refresh();
     }
-    router.push('/dashboard')
-    router.refresh()
-  }
+  };
 
   return (
-    <div className="login-page">
-      <div className="login-glow" />
-      <div className="login-glow-2" />
-      <div className="login-card">
-        <div className="login-logo">DDM</div>
-        <div className="login-tagline">Daily Direct Meeting · CRM Comercial</div>
-        {error && <div className="login-error">{error}</div>}
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="form-group">
-            <label className="form-label">E-mail</label>
-            <input
-              type="email" className="form-input"
-              value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="seu@email.com" required
-            />
+    <div style={{
+      minHeight: '100vh', background: 'var(--bg-page)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div className="card" style={{ width: '100%', maxWidth: 400, padding: '32px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div className="brand-logo" style={{ width: 48, height: 48, fontSize: 24 }}>🪣</div>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', color: 'var(--text)' }}>CRM Baldada</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>Faça login para continuar</div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Senha</label>
-            <input
-              type="password" className="form-input"
-              value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••" required
-            />
-          </div>
-          <button
-            type="submit" className="btn btn-primary" disabled={loading}
-            style={{ marginTop: 8, justifyContent: 'center', width: '100%', padding: '12px' }}
-          >
-            {loading ? 'Entrando…' : 'Entrar'}
-          </button>
-        </form>
-        <div style={{ marginTop: 24, padding: 14, background: 'var(--bg-3)', borderRadius: 10, fontSize: 12, color: 'var(--muted)' }}>
-          <strong style={{ color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>Primeiro acesso?</strong>
-          Solicite seu e-mail e senha ao gestor da equipe.
         </div>
+
+        <form onSubmit={handleLogin}>
+          <div className="form-grid">
+            <div className="field span-4">
+              <label>E-mail</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="field span-4">
+              <label>Senha</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            {error && (
+              <div className="field span-4" style={{ color: 'var(--crit)', fontSize: 12.5, padding: '8px 12px', background: 'rgba(220,38,38,.08)', borderRadius: 8 }}>
+                {error}
+              </div>
+            )}
+            <div className="field span-4">
+              <button
+                type="submit"
+                className="action-btn primary"
+                disabled={loading}
+                style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+              >
+                {loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
-  )
+  );
 }

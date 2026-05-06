@@ -37,7 +37,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
   return (
     <aside className="sidebar">
       <div className="brand-card">
-        <div className="brand-logo">🞡</div>
+        <div className="brand-logo">🪣</div>
         <div className="brand-text">CRM Baldada</div>
       </div>
 

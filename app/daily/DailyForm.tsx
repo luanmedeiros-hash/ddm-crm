@@ -109,51 +109,134 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
               </h1>
             </div>
           </div>
+
           {isLider && (
-            <button type="button" className="action-btn" onClick={() => router.push('/dashboard')}>
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => router.push('/dashboard')}
+            >
               <Icon name="dashboard" size={14} /> Ir para o Dashboard
             </button>
           )}
         </div>
+
         <form onSubmit={handleSubmit}>
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-head"><h3>📊 Funil consultivo</h3></div>
+            <div className="card-head">
+              <h3>📊 Funil consultivo · meta vs real</h3>
+            </div>
             <div className="form-grid">
               {ETAPAS.map(et => (
                 <React.Fragment key={et}>
-                  <div className="field"><label>{et} Meta</label><input type="number" min="0" value={valores[et].meta} onChange={e => setValores({ ...valores, [et]: { ...valores[et], meta: parseInt(e.target.value) || 0 } })} /></div>
-                  <div className="field"><label>{et} Real</label><input type="number" min="0" value={valores[et].real} onChange={e => setValores({ ...valores, [et]: { ...valores[et], real: parseInt(e.target.value) || 0 } })} /></div>
+                  <div className="field">
+                    <label>{et} Meta</label>
+                    <input type="number" min="0" value={valores[et].meta} onChange={e => setValores({ ...valores, [et]: { ...valores[et], meta: parseInt(e.target.value) || 0 } })} />
+                  </div>
+                  <div className="field">
+                    <label>{et} Real</label>
+                    <input type="number" min="0" value={valores[et].real} onChange={e => setValores({ ...valores, [et]: { ...valores[et], real: parseInt(e.target.value) || 0 } })} />
+                  </div>
                 </React.Fragment>
               ))}
             </div>
           </div>
+
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-head"><h3>🎯 Big Points</h3></div>
+            <div className="card-head">
+              <h3>🎯 Big Points do dia · mínimo 3</h3>
+            </div>
             <div className="form-grid">
               {bigPoints.map((bp, i) => (
-                <div key={i} className="field span-4"><label>Big Point {i+1}</label><input type="text" value={bp} onChange={e => { const n=[...bigPoints]; n[i]=e.target.value; setBigPoints(n); }} placeholder="Ex: Cotar seguro" /></div>
+                <div key={i} className="field span-4">
+                  <label>Big Point {i + 1}</label>
+                  <input
+                    type="text"
+                    value={bp}
+                    onChange={e => { const n = [...bigPoints]; n[i] = e.target.value; setBigPoints(n); }}
+                    placeholder="Ex: Cotar seguro do cliente João"
+                  />
+                </div>
               ))}
-              <div className="field span-4"><label>Prioridade</label><input type="text" value={prioridade} onChange={e => setPrioridade(e.target.value)} placeholder="Ex: Reunião 15h" /></div>
+              <div className="field span-4">
+                <label>Prioridade do dia</label>
+                <input
+                  type="text"
+                  value={prioridade}
+                  onChange={e => setPrioridade(e.target.value)}
+                  placeholder="Ex: Reunião de fechamento às 15h"
+                />
+              </div>
             </div>
           </div>
+
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-head"><h3>🚦 Status</h3></div>
+            <div className="card-head">
+              <h3>🚦 Status</h3>
+            </div>
             <div className="form-grid">
-              <div className="field"><label>Precisa ajuda?</label><select value={ajuda} onChange={e => setAjuda(e.target.value)}><option>Não</option><option>Sim</option></select></div>
-              <div className="field"><label>Pontuação (1-5)</label><select value={confianca} onChange={e => setConfianca(parseInt(e.target.value))}>{[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}</select></div>
-              <div className="field"><label>Contatos quentes</label><input type="number" min="0" value={cttQuente} onChange={e => setCttQuente(parseInt(e.target.value)||0)} /></div>
-              <div className="field"><label>Bloqueio</label><select value={bloqueio} onChange={e => setBloqueio(e.target.value)}>{TIPOS_BLOQUEIO.map(t => <option key={t}>{t}</option>)}</select></div>
-              {bloqueio!=='Sem bloqueio'&&(<div className="field span-4"><label>Descrição</label><input type="text" value={bloqueioDesc} onChange={e=>setBloqueioDesc(e.target.value)} placeholder={ACOESBLOQUEIO[bloqueio]||'Descreva'} /></div>)}
-              <div className="field span-4"><label>Avanço</label><input type="text" value={avanco} onChange={e=>setAvanco(e.target.value)} placeholder="Ex: Cliente confirmou interesse" /></div>
-              <div className="field span-4"><label>Observações</label><textarea value={observacoes} onChange={e=>setObservacoes(e.target.value)} /></div>
+              <div className="field">
+                <label>Confiança (1-5)</label>
+                <select value={confianca} onChange={e => setConfianca(parseInt(e.target.value))}>
+                  {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Contatos quentes</label>
+                <input type="number" min="0" value={cttQuente} onChange={e => setCttQuente(parseInt(e.target.value) || 0)} />
+              </div>
+              <div className="field">
+                <label>Precisa de ajuda?</label>
+                <select value={ajuda} onChange={e => setAjuda(e.target.value)}>
+                  <option>Não</option>
+                  <option>Sim</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Bloqueio</label>
+                <select value={bloqueio} onChange={e => setBloqueio(e.target.value)}>
+                  {TIPOS_BLOQUEIO.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+
+              {bloqueio !== 'Sem bloqueio' && (
+                <div className="field span-4">
+                  <label>Descrição do bloqueio</label>
+                  <input
+                    type="text"
+                    value={bloqueioDesc}
+                    onChange={e => setBloqueioDesc(e.target.value)}
+                    placeholder={ACOES_BLOQUEIO[bloqueio] || 'Descreva o bloqueio'}
+                  />
+                </div>
+              )}
+
+              <div className="field span-4">
+                <label>Avanço do dia</label>
+                <input
+                  type="text"
+                  value={avanco}
+                  onChange={e => setAvanco(e.target.value)}
+                  placeholder="Ex: Cliente confirmou interesse na proposta"
+                />
+              </div>
+
+              <div className="field span-4">
+                <label>Observações</label>
+                <textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} />
+              </div>
             </div>
           </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button type="submit" className="action-btn primary" disabled={saving}>{saving?'Salvando...':registroExistente?'✑ Atualizar':'ⓓ Salvar'}</button>
+            <button type="submit" className="action-btn primary" disabled={saving}>
+              {saving ? 'Salvando...' : registroExistente ? '✓ Atualizar daily' : '✓ Salvar daily'}
+            </button>
           </div>
         </form>
       </div>
-      {toast && <div className={`toast ${toast.isError?'error':''}`}>{toast.msg}</div>}
+
+      {toast && <div className={`toast ${toast.isError ? 'error' : ''}`}>{toast.msg}</div>}
     </div>
   );
 }
