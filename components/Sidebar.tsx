@@ -4,6 +4,7 @@ import React from 'react';
 import Icon from './Icon';
 import Avatar from '@/app/dashboard/components/Avatar';
 import { CONSULTORES, isNovo } from '@/lib/constants';
+import { FEATURES } from '@/lib/features';
 import type { Status } from '@/lib/types';
 
 export interface ConsultorAtivo {
@@ -23,10 +24,10 @@ interface Props {
   onClearConsultor?: () => void;
 }
 
-const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string } }[] = [
+const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES }[] = [
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
   { key: 'conversao', icon: 'funnel', label: 'Conversão' },
-  { key: 'agenda', icon: 'calendar', label: 'Agenda' },
+  { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR' },
   { key: 'alertas', icon: 'alert', label: 'Alertas' },
   { key: 'bloqueios', icon: 'block', label: 'Bloqueios' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
@@ -34,6 +35,8 @@ const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string;
   { key: 'bigpoints', icon: 'star', label: 'Big Points' },
   { key: 'simulador', icon: 'sim', label: 'Simulador' },
 ];
+
+const NAV_ITEMS = ALL_NAV_ITEMS.filter(n => !n.flag || FEATURES[n.flag]);
 
 export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor }: Props) {
   const algumSelecionado = !!filtroConsultor;

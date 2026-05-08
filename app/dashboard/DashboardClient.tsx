@@ -20,6 +20,7 @@ import BigPoints from './secoes/BigPoints';
 import Simulador from './secoes/Simulador';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
+import { FEATURES } from '@/lib/features';
 
 interface Props {
   registros: RegInterno[];        // todos os registros (já convertidos)
@@ -500,7 +501,7 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} />}
         {activeTab === 'bigpoints' && <BigPoints filtered={filtered} onSelect={setSelectedConsultor} />}
         {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} />}
-        {activeTab === 'agenda' && <Agenda filtroConsultor={filtroConsultor} />}
+        {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} />}
       </main>
 

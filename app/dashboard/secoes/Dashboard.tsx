@@ -10,6 +10,7 @@ import FunnelDetail from '../components/FunnelDetail';
 import Icon from '@/components/Icon';
 import Charts from '../Charts';
 import AgendaSemanal from '@/components/AgendaSemanal';
+import { FEATURES } from '@/lib/features';
 import type { RegInterno } from '@/lib/types';
 
 interface Props {
@@ -77,7 +78,7 @@ export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTa
       <Charts filtered={filtered} range={range} />
 
       {/* Agenda embutida quando estiver vendo perfil individual */}
-      {filtroConsultor && (
+      {FEATURES.GOOGLE_CALENDAR && filtroConsultor && (
         <div style={{ marginTop: 16 }}>
           <AgendaSemanal consultor={filtroConsultor} showHeader />
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { getValidAccessToken, listEvents, getCurrentWeekRange } from '@/lib/google-calendar';
+import { FEATURES } from '@/lib/features';
 import type { CalendarEvent } from '@/lib/google-calendar';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,13 @@ export const runtime = 'nodejs';
  * }
  */
 export async function GET(request: NextRequest) {
+  if (!FEATURES.GOOGLE_CALENDAR) {
+    return NextResponse.json(
+      { ok: false, error: 'feature_disabled', message: 'Integração com Google Calendar está suspensa.' },
+      { status: 503 }
+    );
+  }
+
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 

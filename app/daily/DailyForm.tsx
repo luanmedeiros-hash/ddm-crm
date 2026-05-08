@@ -6,6 +6,7 @@ import { ETAPAS, TIPOS_BLOQUEIO, ACOES_BLOQUEIO } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
 import Icon from '@/components/Icon';
 import AgendaSemanal from '@/components/AgendaSemanal';
+import { FEATURES } from '@/lib/features';
 import type { RegistroDaily } from '@/lib/types';
 
 const METAS_BASE: Record<string, number> = { AA: 3, CA: 2, SA: 2, EA: 1, AF: 2, CF: 2, SF: 2, EF: 1, AP: 2, PP: 1, REC: 1 };
@@ -237,9 +238,11 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
         </form>
 
         {/* Agenda do próprio Google Calendar — só leitura, semana atual */}
-        <div style={{ marginTop: 24 }}>
-          <AgendaSemanal showHeader />
-        </div>
+        {FEATURES.GOOGLE_CALENDAR && (
+          <div style={{ marginTop: 24 }}>
+            <AgendaSemanal showHeader />
+          </div>
+        )}
       </div>
 
       {toast && <div className={`toast ${toast.isError ? 'error' : ''}`}>{toast.msg}</div>}

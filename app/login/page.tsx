@@ -49,7 +49,10 @@ function LoginInner() {
       provider: 'google',
       options: {
         redirectTo,
-        scopes: 'https://www.googleapis.com/auth/calendar.readonly',
+        // Por enquanto pedimos só os scopes padrão (email/profile/openid).
+        // Quando reativarmos Google Calendar (FEATURES.GOOGLE_CALENDAR=true),
+        // adicionar de volta:
+        //   scopes: 'https://www.googleapis.com/auth/calendar.readonly'
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
