@@ -2,7 +2,29 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Player } from '@remotion/player';
 import { supabase } from '@/lib/supabase';
+import { MarkerHighlight } from '@/components/ui/marker-highlight';
+
+// Cor do marker = azul "balde" (azul-aço médio, harmoniza com slate-900)
+const MARKER_BLUE = '#4a90c8';
+
+function MarkerHighlightScene() {
+  return (
+    <MarkerHighlight
+      before="Bem-vindo ao "
+      highlight="Baldada"
+      after="."
+      markerColor={MARKER_BLUE}
+      baseColor="#0f172a"
+      highlightedTextColor="#ffffff"
+      backgroundColor="transparent"
+      fontSize={72}
+      fontWeight={700}
+      speed={1}
+    />
+  );
+}
 
 function LoginInner() {
   const router = useRouter();
@@ -14,7 +36,6 @@ function LoginInner() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
 
-  // Pega erro vindo do callback (?error=...)
   useEffect(() => {
     const err = searchParams.get('error');
     if (err) setError(decodeURIComponent(err));
@@ -38,7 +59,6 @@ function LoginInner() {
       setError(error.message);
       setGoogleLoading(false);
     }
-    // Em sucesso, o navegador é redirecionado para o Google
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -55,92 +75,108 @@ function LoginInner() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', background: 'var(--bg-page)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-    }}>
-      <div className="card" style={{ width: '100%', maxWidth: 400, padding: '32px 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div className="brand-logo" style={{ width: 48, height: 48, fontSize: 24 }}>🪣</div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', color: 'var(--text)' }}>CRM Baldada</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>Faça login para continuar</div>
+    <div className="login-shell">
+      {/* Lado esquerdo: animação do marker (some em mobile) */}
+      <div className="login-stage">
+        <Player
+          component={MarkerHighlightScene}
+          durationInFrames={90}
+          fps={30}
+          compositionWidth={1200}
+          compositionHeight={900}
+          controls={false}
+          autoPlay
+          loop
+          style={{ width: '100%', height: '100%' }}
+        />
+        <div className="login-stage-foot">
+          <span>🪣</span>
+          <span>CRM da equipe Baldada</span>
+        </div>
+      </div>
+
+      {/* Lado direito: card de login */}
+      <div className="login-side">
+        <div className="card login-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+            <div className="brand-logo" style={{ width: 48, height: 48, fontSize: 24 }}>🪣</div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.02em', color: 'var(--text)' }}>CRM Baldada</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>Faça login para continuar</div>
+            </div>
           </div>
-        </div>
 
-        {/* BOTÃO GOOGLE — primário */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={googleLoading || loading}
-          className="google-btn"
-        >
-          <GoogleIcon />
-          <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
-        </button>
-
-        <div style={{ fontSize: 11.5, color: 'var(--muted)', textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>
-          Use o mesmo Gmail cadastrado no time.<br />
-          Acesso liberado para os 14 consultores e 2 líderes.
-        </div>
-
-        {error && (
-          <div style={{ color: 'var(--crit)', fontSize: 12.5, padding: '10px 12px', background: 'rgba(220,38,38,.08)', borderRadius: 8, marginTop: 14 }}>
-            {error}
-          </div>
-        )}
-
-        {/* DIVISOR */}
-        <div className="login-divider">
-          <span>ou</span>
-        </div>
-
-        {/* TOGGLE: mostrar email/senha (fallback) */}
-        {!showEmailLogin ? (
           <button
             type="button"
-            className="link-btn"
-            style={{ display: 'block', margin: '0 auto', fontSize: 12.5 }}
-            onClick={() => setShowEmailLogin(true)}
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || loading}
+            className="google-btn"
           >
-            Entrar com e-mail e senha
+            <GoogleIcon />
+            <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
           </button>
-        ) : (
-          <form onSubmit={handleEmailLogin}>
-            <div className="form-grid">
-              <div className="field span-4">
-                <label>E-mail</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              <div className="field span-4">
-                <label>Senha</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-              </div>
-              <div className="field span-4">
-                <button
-                  type="submit"
-                  className="action-btn primary"
-                  disabled={loading || googleLoading}
-                  style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
-                >
-                  {loading ? 'Entrando...' : 'Entrar'}
-                </button>
-              </div>
+
+          <div style={{ fontSize: 11.5, color: 'var(--muted)', textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>
+            Use o mesmo Gmail cadastrado no time.<br />
+            Acesso liberado para os 14 consultores e 2 líderes.
+          </div>
+
+          {error && (
+            <div style={{ color: 'var(--crit)', fontSize: 12.5, padding: '10px 12px', background: 'rgba(220,38,38,.08)', borderRadius: 8, marginTop: 14 }}>
+              {error}
             </div>
-          </form>
-        )}
+          )}
+
+          <div className="login-divider">
+            <span>ou</span>
+          </div>
+
+          {!showEmailLogin ? (
+            <button
+              type="button"
+              className="link-btn"
+              style={{ display: 'block', margin: '0 auto', fontSize: 12.5 }}
+              onClick={() => setShowEmailLogin(true)}
+            >
+              Entrar com e-mail e senha
+            </button>
+          ) : (
+            <form onSubmit={handleEmailLogin}>
+              <div className="form-grid">
+                <div className="field span-4">
+                  <label>E-mail</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="field span-4">
+                  <label>Senha</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div className="field span-4">
+                  <button
+                    type="submit"
+                    className="action-btn primary"
+                    disabled={loading || googleLoading}
+                    style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                  >
+                    {loading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );

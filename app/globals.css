@@ -1343,3 +1343,57 @@
     height: 1px;
     background: var(--line);
   }
+
+  /* ========================================================
+     LOGIN — Split-screen com MarkerHighlight (esquerda)
+     ======================================================== */
+  .login-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    background: var(--bg-page);
+  }
+  @media (max-width: 900px) {
+    .login-shell { grid-template-columns: 1fr; }
+  }
+
+  .login-stage {
+    position: relative;
+    background: linear-gradient(180deg, #f6f6f1 0%, #ebece7 100%);
+    border-right: 1px solid var(--line);
+    overflow: hidden;
+    min-height: 320px;
+  }
+  .login-stage > div:first-child { /* Player */
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 320px;
+  }
+  @media (max-width: 900px) {
+    .login-stage { min-height: 260px; max-height: 280px; border-right: none; border-bottom: 1px solid var(--line); }
+  }
+
+  .login-stage-foot {
+    position: absolute;
+    bottom: 22px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: .02em;
+    pointer-events: none;
+  }
+  .login-stage-foot > span:first-child { font-size: 16px; }
+
+  .login-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 32px 28px;
+  }
