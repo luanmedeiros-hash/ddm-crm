@@ -70,8 +70,9 @@ export function MarkerHighlight({
       {/* CSS local — escopo via classes únicas (mh-*) */}
       <style jsx>{`
         .mh-stage {
-          position: absolute;
-          inset: 0;
+          position: relative;
+          width: 100%;
+          height: 100%;
           display: flex;
           align-items: center;
           justify-content: center;

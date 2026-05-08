@@ -1358,17 +1358,15 @@
     gap: 32px;
   }
 
-  /* Aspect-ratio 4:1 casa com a composition do Player (1600x400).
-     max-width controla o tamanho geral. */
+  /* Container da animação. Não precisa mais de aspect-ratio fixo
+     porque o MarkerHighlight CSS se ajusta sozinho ao espaço. */
   .login-stage-v3 {
     width: 100%;
     max-width: 1100px;
-    aspect-ratio: 4 / 1;
+    min-height: 200px;
     display: flex;
-  }
-  .login-stage-v3 > div { /* Player wrapper */
-    width: 100% !important;
-    height: 100% !important;
+    align-items: center;
+    justify-content: center;
   }
 
   .login-cta-v3 {
