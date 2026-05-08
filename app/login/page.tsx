@@ -6,8 +6,13 @@ import { Player } from '@remotion/player';
 import { supabase } from '@/lib/supabase';
 import { MarkerHighlight } from '@/components/ui/marker-highlight';
 
-// Azul "balde" — azul-aço médio, harmoniza com slate-900
+// Azul "balde" — azul-aço médio
 const MARKER_BLUE = '#4a90c8';
+
+// Dimensões da composição (a animação é renderizada nessa resolução
+// e escalada pelo Player para preencher o container).
+const COMP_WIDTH = 1600;
+const COMP_HEIGHT = 400;
 
 function MarkerHighlightScene() {
   return (
@@ -19,7 +24,7 @@ function MarkerHighlightScene() {
       baseColor="#0f172a"
       highlightedTextColor="#ffffff"
       backgroundColor="transparent"
-      fontSize={140}
+      fontSize={120}
       fontWeight={700}
       speed={1}
     />
@@ -57,14 +62,14 @@ function LoginInner() {
   };
 
   return (
-    <div className="login-shell-v2">
-      <div className="login-stage-v2">
+    <div className="login-shell-v3">
+      <div className="login-stage-v3">
         <Player
           component={MarkerHighlightScene}
           durationInFrames={90}
           fps={30}
-          compositionWidth={1600}
-          compositionHeight={500}
+          compositionWidth={COMP_WIDTH}
+          compositionHeight={COMP_HEIGHT}
           controls={false}
           autoPlay
           loop
@@ -72,17 +77,17 @@ function LoginInner() {
         />
       </div>
 
-      <div className="login-cta-v2">
+      <div className="login-cta-v3">
         <button
           type="button"
           onClick={handleGoogleLogin}
           disabled={googleLoading}
-          className="google-btn-v2"
+          className="google-btn-v3"
         >
           <GoogleIcon />
           <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
         </button>
-        {error && <div className="login-error-v2">{error}</div>}
+        {error && <div className="login-error-v3">{error}</div>}
       </div>
     </div>
   );
