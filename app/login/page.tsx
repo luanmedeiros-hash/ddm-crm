@@ -2,34 +2,11 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Player } from '@remotion/player';
 import { supabase } from '@/lib/supabase';
 import { MarkerHighlight } from '@/components/ui/marker-highlight';
 
-// Azul "balde" — azul-aço médio
+// Azul "balde" — azul-aço médio, harmoniza com slate-900
 const MARKER_BLUE = '#4a90c8';
-
-// Dimensões da composição (a animação é renderizada nessa resolução
-// e escalada pelo Player para preencher o container).
-const COMP_WIDTH = 1600;
-const COMP_HEIGHT = 400;
-
-function MarkerHighlightScene() {
-  return (
-    <MarkerHighlight
-      before="Bem-vindo ao "
-      highlight="Baldada"
-      after="."
-      markerColor={MARKER_BLUE}
-      baseColor="#0f172a"
-      highlightedTextColor="#ffffff"
-      backgroundColor="transparent"
-      fontSize={120}
-      fontWeight={700}
-      speed={1}
-    />
-  );
-}
 
 function LoginInner() {
   const searchParams = useSearchParams();
@@ -49,10 +26,6 @@ function LoginInner() {
       provider: 'google',
       options: {
         redirectTo,
-        // Por enquanto pedimos só os scopes padrão (email/profile/openid).
-        // Quando reativarmos Google Calendar (FEATURES.GOOGLE_CALENDAR=true),
-        // adicionar de volta:
-        //   scopes: 'https://www.googleapis.com/auth/calendar.readonly'
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -68,16 +41,17 @@ function LoginInner() {
   return (
     <div className="login-shell-v3">
       <div className="login-stage-v3">
-        <Player
-          component={MarkerHighlightScene}
-          durationInFrames={90}
-          fps={30}
-          compositionWidth={COMP_WIDTH}
-          compositionHeight={COMP_HEIGHT}
-          controls={false}
-          autoPlay
-          loop
-          style={{ width: '100%', height: '100%' }}
+        <MarkerHighlight
+          before="Bem-vindo ao "
+          highlight="Baldada"
+          after="."
+          markerColor={MARKER_BLUE}
+          baseColor="#0f172a"
+          highlightedTextColor="#ffffff"
+          backgroundColor="transparent"
+          fontSize={120}
+          fontWeight={700}
+          durationSec={3.5}
         />
       </div>
 

@@ -9,15 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@remotion/player": "^4.0.458",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "chart.js": "^4.4.6",
     "next": "14.2.18",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
-    "react-dom": "^18.3.1",
-    "remotion": "^4.0.458"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20",

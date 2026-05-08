@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  interpolate,
-  interpolateColors,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import React from "react";
 
 export interface MarkerHighlightProps {
   before?: string;
@@ -18,10 +12,22 @@ export interface MarkerHighlightProps {
   backgroundColor?: string;
   fontSize?: number;
   fontWeight?: number;
-  speed?: number;
+  /** Duração total de um ciclo da animação em segundos. Default: 3.5 */
+  durationSec?: number;
   className?: string;
 }
 
+/**
+ * Marca-texto animado em CSS puro.
+ *
+ * Loop:
+ *  0%   - tarja invisível (clip-path 100%), texto cor base
+ *  20%  - texto começa a virar branco
+ *  40%  - tarja totalmente revelada e texto branco
+ *  85%  - mantém estado final
+ *  100% - volta ao início (clip 100%, texto base) — mas a transição
+ *         é via "from-to" então o reset é instantâneo (não há reverse).
+ */
 export function MarkerHighlight({
   before = "",
   highlight,
@@ -32,81 +38,118 @@ export function MarkerHighlight({
   backgroundColor = "#ffffff",
   fontSize = 72,
   fontWeight = 600,
-  speed = 1,
+  durationSec = 3.5,
   className,
 }: MarkerHighlightProps) {
-  const frame = useCurrentFrame() * speed;
-  const { fps } = useVideoConfig();
-
-  // markerProgress vai de 0 (escondido) -> 1 (totalmente visível) com spring.
-  // Usamos clamp para garantir que fique no intervalo [0,1] mesmo se o spring
-  // ultrapassar levemente.
-  const rawScale = spring({
-    frame: frame - 15,
-    fps,
-    config: { damping: 14 },
-  });
-  const markerProgress = Math.max(0, Math.min(1, rawScale));
-
-  // Em vez de scaleX (que pode quebrar bounding box em alguns navegadores),
-  // usamos clip-path inset() para revelar a tarja da esquerda para a direita.
-  // O elemento mantém width 100% sempre — o clip apenas esconde a parte direita.
-  const clipRight = (1 - markerProgress) * 100;
-
-  const textColor = interpolateColors(
-    interpolate(markerProgress, [0.5, 0.8], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    }),
-    [0, 1],
-    [baseColor, highlightedTextColor],
-  );
+  // CSS variables locais para reutilizar nas animations sem clash global
+  const styleVars = {
+    ["--mh-marker"]: markerColor,
+    ["--mh-base"]: baseColor,
+    ["--mh-text-on-marker"]: highlightedTextColor,
+    ["--mh-bg"]: backgroundColor,
+    ["--mh-duration"]: `${durationSec}s`,
+  } as React.CSSProperties;
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: backgroundColor,
-      }}
-    >
+    <div className="mh-stage" style={styleVars}>
       <span
-        className={className}
+        className={`mh-text ${className || ""}`}
         style={{
           fontSize,
           fontWeight,
-          color: baseColor,
-          letterSpacing: "-0.03em",
-          fontFamily:
-            "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
         }}
       >
         {before}
-        <span style={{ position: "relative", display: "inline-block" }}>
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              top: "-0.05em",
-              bottom: "-0.05em",
-              left: "-0.1em",
-              right: "-0.1em",
-              background: markerColor,
-              clipPath: `inset(0 ${clipRight}% 0 0)`,
-              WebkitClipPath: `inset(0 ${clipRight}% 0 0)`,
-              zIndex: 0,
-              willChange: "clip-path",
-            }}
-          />
-          <span style={{ position: "relative", zIndex: 1, color: textColor }}>
-            {highlight}
-          </span>
+        <span className="mh-wrap">
+          <span className="mh-marker" aria-hidden />
+          <span className="mh-highlight">{highlight}</span>
         </span>
         {after}
       </span>
+
+      {/* CSS local — escopo via classes únicas (mh-*) */}
+      <style jsx>{`
+        .mh-stage {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--mh-bg);
+        }
+        .mh-text {
+          color: var(--mh-base);
+          letter-spacing: -0.03em;
+          font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont,
+            "Segoe UI", Roboto, sans-serif;
+          line-height: 1.1;
+        }
+        .mh-wrap {
+          position: relative;
+          display: inline-block;
+        }
+        .mh-marker {
+          position: absolute;
+          top: -0.05em;
+          bottom: -0.05em;
+          left: -0.1em;
+          right: -0.1em;
+          background: var(--mh-marker);
+          z-index: 0;
+          /* Inicia totalmente recortado (escondido) e revela da esquerda
+             para a direita. clip-path inset(top right bottom left). */
+          clip-path: inset(0 100% 0 0);
+          -webkit-clip-path: inset(0 100% 0 0);
+          animation: mh-reveal var(--mh-duration) cubic-bezier(0.22, 1, 0.36, 1)
+            infinite;
+          will-change: clip-path;
+        }
+        .mh-highlight {
+          position: relative;
+          z-index: 1;
+          color: var(--mh-base);
+          animation: mh-text-color var(--mh-duration) ease infinite;
+        }
+        @keyframes mh-reveal {
+          0% {
+            clip-path: inset(0 100% 0 0);
+            -webkit-clip-path: inset(0 100% 0 0);
+          }
+          40%,
+          92% {
+            clip-path: inset(0 0 0 0);
+            -webkit-clip-path: inset(0 0 0 0);
+          }
+          100% {
+            clip-path: inset(0 100% 0 0);
+            -webkit-clip-path: inset(0 100% 0 0);
+          }
+        }
+        @keyframes mh-text-color {
+          0%,
+          22% {
+            color: var(--mh-base);
+          }
+          40%,
+          92% {
+            color: var(--mh-text-on-marker);
+          }
+          100% {
+            color: var(--mh-base);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .mh-marker {
+            animation: none;
+            clip-path: inset(0 0 0 0);
+            -webkit-clip-path: inset(0 0 0 0);
+          }
+          .mh-highlight {
+            animation: none;
+            color: var(--mh-text-on-marker);
+          }
+        }
+      `}</style>
     </div>
   );
 }
