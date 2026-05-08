@@ -216,6 +216,10 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
     setFiltroConsultor(filtroConsultor === nome ? '' : nome);
   };
 
+  const handleClearConsultor = () => {
+    setFiltroConsultor('');
+  };
+
   const userInitial = (userName || userEmail || 'U').charAt(0).toUpperCase();
 
   return (
@@ -227,6 +231,7 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
         filtroConsultor={filtroConsultor}
         onTabChange={setActiveTab}
         onConsultorClick={handleConsultorClick}
+        onClearConsultor={handleClearConsultor}
       />
 
       <main className="main">
@@ -393,10 +398,34 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
               <span>Dados {periodo === 'diario' ? 'do dia' : periodo === 'semanal' ? 'da semana' : 'do mês'}</span>
               <span style={{ color: 'var(--primary)' }}>·</span>
               <span style={{ color: 'var(--text-dim)' }}>{filtered.length} registros</span>
-              <span className="sec-pill">{ativosCount} ativos</span>
+              {!filtroConsultor ? (
+                <span className="scope-chip team">
+                  <span className="scope-chip-icon">👥</span>
+                  <span>Toda a equipe</span>
+                  <span className="scope-chip-count">{ativosCount} ativos</span>
+                </span>
+              ) : (
+                <span className="scope-chip individual">
+                  <span className="scope-chip-icon">👤</span>
+                  <span>Vendo · <strong>{filtroConsultor}</strong></span>
+                  <button
+                    className="scope-chip-clear"
+                    onClick={handleClearConsultor}
+                    title="Voltar para visão da equipe"
+                    aria-label="Voltar para visão da equipe"
+                  >✕</button>
+                </span>
+              )}
             </div>
-            <h1 className="sec-title">Dashboard</h1>
-            <div className="sec-sub">Acompanhe o funil consultivo da equipe em tempo real.</div>
+            <h1 className="sec-title">
+              {filtroConsultor ? filtroConsultor : 'Dashboard'}
+            </h1>
+            <div className="sec-sub">
+              {filtroConsultor
+                ? <>Visão individual de <strong>{filtroConsultor}</strong>. <button className="link-btn" onClick={handleClearConsultor}>← Voltar para toda a equipe</button></>
+                : 'Acompanhe o funil consultivo da equipe em tempo real.'
+              }
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -415,10 +444,10 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
               </select>
               <Icon name="chevronDown" size={10} className="caret" />
             </div>
-            <div className="filter-pill">
+            <div className={`filter-pill ${filtroConsultor ? 'active' : ''}`} title={filtroConsultor ? `Filtrando por ${filtroConsultor}` : 'Filtrar por consultor'}>
               <select value={filtroConsultor} onChange={e => setFiltroConsultor(e.target.value)}>
-                <option value="">Todos</option>
-                {CONSULTORES.map(c => <option key={c}>{c}</option>)}
+                <option value="">👥 Toda a equipe</option>
+                {CONSULTORES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <Icon name="chevronDown" size={10} className="caret" />
             </div>

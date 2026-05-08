@@ -232,10 +232,84 @@
     cursor: pointer;
     margin: 1px 0;
     border: 1px solid transparent;
+    position: relative;
   }
   .active-item:hover { background: var(--bg-soft); }
   .active-item.muted { opacity: .55; }
   .active-item.selected { background: #fff; border-color: var(--line); }
+  .active-item.dim { opacity: .42; }
+  .active-item.dim:hover { opacity: .85; }
+  .active-item.selected-strong {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+    transform: translateX(2px);
+  }
+  .active-item.selected-strong > div > div:first-child { color: #fff !important; }
+  .active-item.selected-strong > div > div:nth-child(2) { color: rgba(255,255,255,.7) !important; }
+  .active-item .selected-bar {
+    position: absolute;
+    left: -10px; top: 8px; bottom: 8px;
+    width: 3px;
+    background: var(--primary);
+    border-radius: 0 3px 3px 0;
+  }
+  .active-item.selected-strong .selected-bar { background: var(--gold); }
+
+  /* === Item especial: TODA A EQUIPE === */
+  .team-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    margin: 4px 0 8px;
+    border: 1px dashed var(--line-2);
+    background: transparent;
+    transition: .15s;
+    position: relative;
+  }
+  .team-item:hover {
+    background: var(--bg-soft);
+    border-color: var(--primary);
+  }
+  .team-item.selected {
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    border-style: solid;
+    box-shadow: var(--shadow-md);
+  }
+  .team-item .team-avatar {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    background: var(--bg-muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: .15s;
+  }
+  .team-item.selected .team-avatar {
+    background: rgba(255,255,255,.18);
+  }
+  .team-item .team-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -.005em;
+  }
+  .team-item.selected .team-title { color: #fff; }
+  .team-item .team-sub {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+  .team-item.selected .team-sub { color: rgba(255,255,255,.75); }
+  .team-item .team-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 3px rgba(183,138,48,.25);
+    flex-shrink: 0;
+  }
   .active-avatar {
     width: 28px; height: 28px; border-radius: 8px;
     background: var(--bg-muted);
@@ -370,12 +444,89 @@
     box-shadow: var(--shadow-sm);
   }
   .filter-pill:hover { border-color: var(--line-2); }
+  .filter-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: var(--shadow-md);
+  }
+  .filter-pill.active .caret { color: rgba(255,255,255,.7); }
+  .filter-pill.active select { color: #fff; }
   .filter-pill .caret { color: var(--muted); font-size: 9px; }
   .filter-pill select {
     background: transparent; border: none; outline: none;
     color: inherit; font-family: inherit; font-size: inherit; font-weight: inherit;
     appearance: none; cursor: pointer; padding-right: 4px;
   }
+
+  /* === Scope chip: indica se está vendo Toda a equipe ou Individual === */
+  .scope-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 8px;
+    border-radius: 99px;
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-left: 10px;
+    border: 1px solid;
+    transition: .15s;
+  }
+  .scope-chip.team {
+    background: var(--primary-100);
+    border-color: var(--primary-200);
+    color: var(--primary);
+  }
+  .scope-chip.individual {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+  }
+  .scope-chip-icon {
+    font-size: 12px;
+    line-height: 1;
+  }
+  .scope-chip-count {
+    background: rgba(15,23,42,.08);
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-size: 10.5px;
+    font-weight: 700;
+    margin-left: 2px;
+  }
+  .scope-chip-clear {
+    background: rgba(146,64,14,.15);
+    border: none;
+    color: #92400e;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 2px;
+    padding: 0;
+    transition: .15s;
+    font-family: inherit;
+  }
+  .scope-chip-clear:hover {
+    background: #92400e;
+    color: #fff;
+  }
+
+  /* link-button inline (usado no sec-sub) */
+  .link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 4px;
+    color: var(--primary);
+    text-decoration: underline;
+    font: inherit;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .link-btn:hover { color: var(--primary-bright); }
 
   /* ========================================================
      === 4 MÉTRICAS (DESTAQUE PRINCIPAL) ===

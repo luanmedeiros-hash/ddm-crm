@@ -20,6 +20,7 @@ interface Props {
   filtroConsultor: string;
   onTabChange: (tab: string) => void;
   onConsultorClick: (nome: string) => void;
+  onClearConsultor?: () => void;
 }
 
 const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string } }[] = [
@@ -33,7 +34,9 @@ const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string;
   { key: 'simulador', icon: 'sim', label: 'Simulador' },
 ];
 
-export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick }: Props) {
+export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor }: Props) {
+  const algumSelecionado = !!filtroConsultor;
+
   return (
     <aside className="sidebar">
       <div className="brand-card">
@@ -75,24 +78,46 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
         <span>Consultores</span>
         <span className="nav-badge count">{ativosCount}</span>
       </div>
-      <div>
-        {ativos.map(a => (
-          <div
-            key={a.nome}
-            className={`active-item ${!a.ativo ? 'muted' : ''} ${filtroConsultor === a.nome ? 'selected' : ''}`}
-            onClick={() => onConsultorClick(a.nome)}
-          >
-            <Avatar name={a.nome} variant={a.status === 'Crítico' ? 'crit' : 'gold'} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {a.nome}{isNovo(a.nome) && <span className="new-badge">NOVO</span>}
-              </div>
-              <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>
-                {a.ativo ? `${a.ind.toFixed(0)}% atingimento` : 'Sem dados'}
-              </div>
-            </div>
+
+      {/* Item especial: TODA A EQUIPE — sempre fica no topo */}
+      <div
+        className={`team-item ${!algumSelecionado ? 'selected' : ''}`}
+        onClick={() => onClearConsultor?.()}
+        title="Ver dados consolidados de toda a equipe"
+      >
+        <div className="team-avatar">👥</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="team-title">Toda a equipe</div>
+          <div className="team-sub">
+            {!algumSelecionado ? 'Visão consolidada · ativa' : 'Clique para voltar'}
           </div>
-        ))}
+        </div>
+        {!algumSelecionado && <div className="team-dot" />}
+      </div>
+
+      <div>
+        {ativos.map(a => {
+          const selecionado = filtroConsultor === a.nome;
+          return (
+            <div
+              key={a.nome}
+              className={`active-item ${!a.ativo ? 'muted' : ''} ${selecionado ? 'selected-strong' : ''} ${algumSelecionado && !selecionado ? 'dim' : ''}`}
+              onClick={() => onConsultorClick(a.nome)}
+              title={selecionado ? `Vendo ${a.nome} · clique para voltar à equipe` : `Ver ${a.nome} individualmente`}
+            >
+              <Avatar name={a.nome} variant={a.status === 'Crítico' ? 'crit' : 'gold'} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {a.nome}{isNovo(a.nome) && <span className="new-badge">NOVO</span>}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>
+                  {a.ativo ? `${a.ind.toFixed(0)}% atingimento` : 'Sem dados'}
+                </div>
+              </div>
+              {selecionado && <div className="selected-bar" />}
+            </div>
+          );
+        })}
       </div>
     </aside>
   );
