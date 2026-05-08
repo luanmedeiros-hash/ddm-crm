@@ -81,7 +81,7 @@ function LoginInner() {
 
         <div style={{ fontSize: 11.5, color: 'var(--muted)', textAlign: 'center', marginTop: 10, lineHeight: 1.5 }}>
           Use o mesmo Gmail cadastrado no time.<br />
-          Acesso liberado para os 13 consultores e 2 líderes.
+          Acesso liberado para os 14 consultores e 2 líderes.
         </div>
 
         {error && (

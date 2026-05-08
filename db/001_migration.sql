@@ -99,10 +99,16 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- ========== 4. Promover líderes existentes ==========
+-- ========== 4. Promover líderes ==========
+-- Matheus Baldini substitui Igor Floriano como líder.
 UPDATE public.profiles
 SET role = 'lider'
-WHERE email IN ('igorfloriano.w1@gmail.com', 'luanmedeiros.w1@gmail.com');
+WHERE email IN ('matheus.baldini@w1partner.com.br', 'luanmedeiros.w1@gmail.com');
+
+-- Garante que Igor (líder antigo) volta a ser liderado, caso já exista no banco.
+UPDATE public.profiles
+SET role = 'liderado'
+WHERE email = 'igorfloriano.w1@gmail.com';
 
 -- ========== 5. Resultado ==========
 SELECT

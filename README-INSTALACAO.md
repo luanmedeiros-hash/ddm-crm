@@ -49,48 +49,38 @@ A migration faz:
 - Cria índices para performance
 - Cria políticas RLS (linha-a-linha por usuário)
 - Cria trigger `handle_new_user` que gera profile automaticamente quando usuário é criado em `auth.users`
-- Promove `igorfloriano.w1@gmail.com` e `luanmedeiros.w1@gmail.com` a líderes
+- Promove `matheus.baldini@w1partner.com.br` e `luanmedeiros.w1@gmail.com` a líderes
 
 > ✅ A migration usa `ADD COLUMN IF NOT EXISTS`, então é idempotente — pode rodar várias vezes sem erro.
 
 ---
 
-## 4. Criar usuários para os 13 consultores
+## 4. Usuários do time (login via Google SSO)
 
-No Supabase: **Authentication → Users → Add user → Create new user**.
+Desde a versão atual, o login é feito **via Google** (botão "Entrar com Google" na tela de login). Não é mais preciso criar usuários manualmente no Supabase nem definir senha — o profile é criado automaticamente no primeiro login a partir do mapa `EMAIL_TO_CONSULTOR` em `app/page.tsx`.
 
-Crie 13 usuários, um para cada consultor:
+| Email Google                       | Nome em `consultor_nome` |
+|------------------------------------|--------------------------|
+| brunobacco.w1@gmail.com            | Bacco                    |
+| bruno.bottoni.w1@gmail.com         | Bottoni                  |
+| danilocastanhari.w1@gmail.com      | Danilo                   |
+| davigali.w1@gmail.com              | Davi                     |
+| matheusduarte.w1@gmail.com         | Duarte                   |
+| erichenrique.w1@gmail.com          | Eric                     |
+| matheus.faria.99.w1@gmail.com      | Faria                    |
+| juliodeoliveira.w1@gmail.com       | Júlio                    |
+| melwierzba.w1@gmail.com            | Mel                      |
+| jpedrodias.w1@gmail.com            | Pedro                    |
+| pauloferraz.w1@gmail.com           | PH                       |
+| rafael.garbelini.w1@gmail.com      | Rafael                   |
+| matheussalgado.w1@gmail.com        | Salgado                  |
+| shojikato.w1@gmail.com             | Shoji                    |
 
-| Email sugerido                 | Nome a usar em `consultor_nome` |
-|--------------------------------|----------------------------------|
-| bruno.w1@gmail.com             | Bruno                            |
-| danilo.w1@gmail.com            | Danilo                           |
-| davi.w1@gmail.com              | Davi                             |
-| duarte.w1@gmail.com            | Duarte                           |
-| eric.w1@gmail.com              | Eric                             |
-| faria.w1@gmail.com             | Faria                            |
-| julio.w1@gmail.com             | Júlio                            |
-| mel.w1@gmail.com               | Mel                              |
-| pedro.w1@gmail.com             | Pedro                            |
-| ph.w1@gmail.com                | PH                               |
-| salgado.w1@gmail.com           | Salgado                          |
-| shoji.w1@gmail.com             | Shoji                            |
+Líderes: `matheus.baldini@w1partner.com.br` e `luanmedeiros.w1@gmail.com`.
 
-> O 13º é você (Luan), que já é líder.
+> ⚙️ Para que o login Google funcione, é preciso configurar o OAuth Client no Google Cloud Console e habilitar o provedor Google no Supabase Authentication. Veja README principal.
 
-Pra cada usuário criado, depois rode no SQL Editor:
-
-```sql
--- Substitua o email e o nome
-UPDATE profiles
-SET role = 'liderado',
-    consultor_nome = 'Bruno'
-WHERE id = (SELECT id FROM auth.users WHERE email = 'bruno.w1@gmail.com');
-```
-
-Repita pros 12 consultores.
-
-> 💡 Dica: o trigger `handle_new_user` já cria o profile com `role='liderado'` por padrão. Você só precisa setar o `consultor_nome`.
+> 💡 Se quiser ainda assim criar usuários com senha (fallback de email/senha), use o Authentication → Users do Supabase normalmente. O trigger `handle_new_user` cria o profile com `role='liderado'`.
 
 ---
 
@@ -167,7 +157,7 @@ ddm-crm-v3/
 → É esperado se ninguém preencheu nada ainda. Crie 1 registro de teste:
 ```sql
 INSERT INTO registros_daily (user_id, data, aa_meta, aa_real, af_meta, af_real, ap_meta, ap_real)
-VALUES ((SELECT id FROM auth.users WHERE email = 'bruno.w1@gmail.com'),
+VALUES ((SELECT id FROM auth.users WHERE email = 'brunobacco.w1@gmail.com'),
         CURRENT_DATE, 5, 4, 3, 2, 2, 1);
 ```
 

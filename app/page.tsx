@@ -1,18 +1,26 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
-// Mapa email → nome do consultor (case-insensitive na busca)
-// Use o Gmail real de cada um. Para os que ainda não conhecemos,
-// o nome cai no fallback (parte antes do @ do email).
+// Mapa email → nome do consultor (sempre lowercase)
 const EMAIL_TO_CONSULTOR: Record<string, string> = {
-  // Adicione aqui os emails @gmail.com de cada consultor:
-  // 'bruno.algumacoisa@gmail.com': 'Bruno',
-  // 'danilo....@gmail.com': 'Danilo',
-  // ...
+  'brunobacco.w1@gmail.com':         'Bacco',
+  'bruno.bottoni.w1@gmail.com':      'Bottoni',
+  'danilocastanhari.w1@gmail.com':   'Danilo',
+  'davigali.w1@gmail.com':           'Davi',
+  'matheusduarte.w1@gmail.com':      'Duarte',
+  'erichenrique.w1@gmail.com':       'Eric',
+  'matheus.faria.99.w1@gmail.com':   'Faria',
+  'juliodeoliveira.w1@gmail.com':    'Júlio',
+  'melwierzba.w1@gmail.com':         'Mel',
+  'jpedrodias.w1@gmail.com':         'Pedro',
+  'pauloferraz.w1@gmail.com':        'PH',
+  'rafael.garbelini.w1@gmail.com':   'Rafael',
+  'matheussalgado.w1@gmail.com':     'Salgado',
+  'shojikato.w1@gmail.com':          'Shoji',
 };
 
 const LIDERES = new Set([
-  'igorfloriano.w1@gmail.com',
+  'matheus.baldini@w1partner.com.br',
   'luanmedeiros.w1@gmail.com',
 ]);
 
