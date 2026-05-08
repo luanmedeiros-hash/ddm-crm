@@ -1415,3 +1415,169 @@
     text-align: center;
     width: 100%;
   }
+
+  /* ========================================================
+     AGENDA SEMANAL — Google Calendar (read-only)
+     ======================================================== */
+  .agenda-wrap {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .agenda-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .agenda-title {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .agenda-range {
+    font-size: 11.5px; font-weight: 500; color: var(--muted);
+    background: var(--bg-soft);
+    padding: 2px 8px; border-radius: 99px;
+  }
+  .agenda-count {
+    font-size: 11.5px; font-weight: 600; color: var(--muted);
+  }
+  .agenda-empty {
+    padding: 20px; text-align: center; color: var(--muted);
+    font-size: 12.5px;
+  }
+  .agenda-error {
+    color: var(--crit);
+    background: rgba(220,38,38,.05);
+    border-radius: 8px;
+  }
+  .agenda-warning {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    margin-bottom: 12px;
+  }
+
+  .agenda-days {
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+  .agenda-day {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .agenda-day-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-top: 6px;
+  }
+  .agenda-day-events {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .agenda-event {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    transition: .15s;
+  }
+  .agenda-event:hover {
+    border-color: var(--line-2);
+    background: #fff;
+  }
+  .agenda-event.tentative {
+    border-style: dashed;
+    opacity: .8;
+  }
+  .agenda-event-time {
+    font-size: 11px; font-weight: 700;
+    color: var(--text);
+    padding-top: 2px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .agenda-event-time .t-sep { color: var(--muted); }
+  .agenda-event-time .t-end { color: var(--text-dim); font-weight: 500; }
+
+  .agenda-event-body { min-width: 0; }
+  .agenda-event-title {
+    font-size: 12.5px; font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .agenda-event-consultor,
+  .agenda-event-loc {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .agenda-event-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .agenda-event-link:hover { text-decoration: underline; }
+
+  .agenda-event-guests {
+    margin-top: 6px;
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  .agenda-guests-label {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-right: 2px;
+  }
+  .agenda-guest {
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    background: var(--bg-muted);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .agenda-guest.status-accepted {
+    background: #d1fae5;
+    border-color: #a7f3d0;
+    color: #065f46;
+  }
+  .agenda-guest.status-declined {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+    text-decoration: line-through;
+    opacity: .7;
+  }
+  .agenda-guest.status-tentative {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+  }
+  .agenda-guest-more {
+    font-size: 10.5px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  @media (max-width: 720px) {
+    .agenda-day { grid-template-columns: 1fr; }
+    .agenda-day-label { padding-top: 0; }
+    .agenda-event { grid-template-columns: 1fr; gap: 4px; }
+  }

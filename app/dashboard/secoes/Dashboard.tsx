@@ -9,6 +9,7 @@ import TrendArrow from '../components/TrendArrow';
 import FunnelDetail from '../components/FunnelDetail';
 import Icon from '@/components/Icon';
 import Charts from '../Charts';
+import AgendaSemanal from '@/components/AgendaSemanal';
 import type { RegInterno } from '@/lib/types';
 
 interface Props {
@@ -18,9 +19,10 @@ interface Props {
   onSelect: (nome: string) => void;
   onGoTab: (tab: string) => void;
   onRefresh: () => void;
+  filtroConsultor?: string;
 }
 
-export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh }: Props) {
+export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh, filtroConsultor }: Props) {
   const top3 = useMemo(() => {
     return CONSULTORES.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
@@ -73,6 +75,13 @@ export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTa
       </div>
 
       <Charts filtered={filtered} range={range} />
+
+      {/* Agenda embutida quando estiver vendo perfil individual */}
+      {filtroConsultor && (
+        <div style={{ marginTop: 16 }}>
+          <AgendaSemanal consultor={filtroConsultor} showHeader />
+        </div>
+      )}
     </>
   );
 }

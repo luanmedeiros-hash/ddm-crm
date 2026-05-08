@@ -26,6 +26,7 @@ interface Props {
 const NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string } }[] = [
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
   { key: 'conversao', icon: 'funnel', label: 'Conversão' },
+  { key: 'agenda', icon: 'calendar', label: 'Agenda' },
   { key: 'alertas', icon: 'alert', label: 'Alertas' },
   { key: 'bloqueios', icon: 'block', label: 'Bloqueios' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },

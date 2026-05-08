@@ -49,6 +49,7 @@ function LoginInner() {
       provider: 'google',
       options: {
         redirectTo,
+        scopes: 'https://www.googleapis.com/auth/calendar.readonly',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

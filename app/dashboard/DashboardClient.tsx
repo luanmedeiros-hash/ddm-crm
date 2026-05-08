@@ -19,6 +19,7 @@ import Historico from './secoes/Historico';
 import BigPoints from './secoes/BigPoints';
 import Simulador from './secoes/Simulador';
 import ModoDaily from './secoes/ModoDaily';
+import Agenda from './secoes/Agenda';
 
 interface Props {
   registros: RegInterno[];        // todos os registros (já convertidos)
@@ -491,7 +492,7 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
         )}
 
         {/* SEÇÕES */}
-        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} />}
+        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} />}
         {activeTab === 'conversao' && <Conversao filtered={filtered} />}
         {activeTab === 'alertas' && <Alertas filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} />}
         {activeTab === 'bloqueios' && <Bloqueios filtered={filtered} />}
@@ -499,6 +500,7 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} />}
         {activeTab === 'bigpoints' && <BigPoints filtered={filtered} onSelect={setSelectedConsultor} />}
         {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} />}
+        {activeTab === 'agenda' && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} />}
       </main>
 
