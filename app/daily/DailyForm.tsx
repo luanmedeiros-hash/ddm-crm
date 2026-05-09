@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ETAPAS, TIPOS_BLOQUEIO, ACOES_BLOQUEIO } from '@/lib/constants';
 import { supabase } from '@/lib/supabase';
 import Icon from '@/components/Icon';
-import AgendaSemanal from '@/components/AgendaSemanal';
+import AgendaConsultor from '@/components/AgendaConsultor';
 import { FEATURES } from '@/lib/features';
 import type { RegistroDaily } from '@/lib/types';
 
@@ -237,10 +237,10 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
           </div>
         </form>
 
-        {/* Agenda do próprio Google Calendar — só leitura, semana atual */}
-        {FEATURES.GOOGLE_CALENDAR && (
-          <div style={{ marginTop: 24 }}>
-            <AgendaSemanal showHeader />
+        {/* Agenda Google Calendar — sync manual + vinculação a leads */}
+        {FEATURES.CALENDAR_DAILY && (
+          <div style={{ marginTop: 28, padding: '20px 0 0', borderTop: '1px solid var(--line)' }}>
+            <AgendaConsultor userId={userId} />
           </div>
         )}
       </div>

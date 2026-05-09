@@ -34,9 +34,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  // Captura tokens do provedor Google e armazena em google_tokens —
-  // somente quando a feature de Calendar está ligada.
-  if (FEATURES.GOOGLE_CALENDAR) {
+  // Captura tokens do provedor Google e armazena em google_tokens
+  if (FEATURES.GOOGLE_CALENDAR || FEATURES.CALENDAR_DAILY) {
     const session = data?.session;
     const userId = session?.user?.id;
     const providerToken = session?.provider_token;

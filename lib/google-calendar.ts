@@ -1,34 +1,23 @@
 /**
- * Helper server-side para Google Calendar API (read-only).
- *
- * Responsabilidades:
- * 1. Carregar tokens de google_tokens
- * 2. Renovar access_token via refresh_token quando expirado
- * 3. Listar eventos da semana atual de um usuário
- *
- * NÃO USAR no client — depende de variáveis de ambiente sensíveis
- * (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).
+ * Helpers server-side para Google Calendar API (read-only).
+ * NÃO USAR no client — depende de GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { CalendarEventDB, CalendarAttendee } from './types';
 
 export interface CalendarEvent {
   id: string;
-  summary: string;            // título
+  summary: string;
   description?: string;
-  start: string;              // ISO 8601
+  start: string;           // ISO 8601
   end: string;
   location?: string;
-  hangoutLink?: string;       // Google Meet
-  attendees: {
-    email: string;
-    displayName?: string;
-    responseStatus?: string;  // accepted | declined | tentative | needsAction
-    self?: boolean;
-    organizer?: boolean;
-  }[];
+  hangoutLink?: string;
+  attendees: CalendarAttendee[];
   organizerEmail?: string;
-  status: string;             // confirmed | tentative | cancelled
+  status: string;
+  isAllDay: boolean;
 }
 
 interface TokenRow {
@@ -39,10 +28,8 @@ interface TokenRow {
   scope: string | null;
 }
 
-/**
- * Renova o access_token Google usando o refresh_token salvo.
- * Atualiza a linha em google_tokens.
- */
+// ─── Token management ─────────────────────────────────────────────────────────
+
 async function refreshAccessToken(
   supabase: SupabaseClient,
   row: TokenRow
@@ -70,31 +57,21 @@ async function refreshAccessToken(
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    console.error('[google-calendar] refresh falhou:', res.status, errText);
+    console.error('[google-calendar] refresh falhou:', res.status, await res.text());
     return null;
   }
 
   const json = (await res.json()) as { access_token: string; expires_in: number };
-  const newAccessToken = json.access_token;
   const expiresAt = new Date(Date.now() + (json.expires_in - 60) * 1000).toISOString();
 
   await supabase
     .from('google_tokens')
-    .update({
-      access_token: newAccessToken,
-      expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ access_token: json.access_token, expires_at: expiresAt, updated_at: new Date().toISOString() })
     .eq('user_id', row.user_id);
 
-  return newAccessToken;
+  return json.access_token;
 }
 
-/**
- * Retorna um access_token válido para o user — renovando se expirou.
- * Retorna null se não houver token salvo ou se o refresh falhar.
- */
 export async function getValidAccessToken(
   supabase: SupabaseClient,
   userId: string
@@ -108,55 +85,15 @@ export async function getValidAccessToken(
   if (error || !data) return null;
   const row = data as TokenRow;
 
-  // Token ainda válido (com margem de 30s)
   if (row.expires_at) {
     const expiresMs = new Date(row.expires_at).getTime();
-    if (expiresMs - Date.now() > 30 * 1000) {
-      return row.access_token;
-    }
+    if (expiresMs - Date.now() > 30_000) return row.access_token;
   }
 
-  // Expirado → tenta refresh
   return refreshAccessToken(supabase, row);
 }
 
-/**
- * Lista eventos do calendário primário do usuário entre as datas dadas.
- */
-export async function listEvents(
-  accessToken: string,
-  fromIso: string,
-  toIso: string,
-  calendarId: string = 'primary'
-): Promise<CalendarEvent[]> {
-  const url = new URL(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
-  );
-  url.searchParams.set('timeMin', fromIso);
-  url.searchParams.set('timeMax', toIso);
-  url.searchParams.set('singleEvents', 'true');
-  url.searchParams.set('orderBy', 'startTime');
-  url.searchParams.set('maxResults', '50');
-
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Google Calendar API ${res.status}: ${txt}`);
-  }
-
-  const json = (await res.json()) as { items?: GoogleEventRaw[] };
-  const items = json.items || [];
-
-  return items
-    .filter(ev => ev.status !== 'cancelled')
-    .map(toCalendarEvent);
-}
-
-/* ---------- helpers de tipo (raw → tipado) ---------- */
+// ─── Google Calendar API ──────────────────────────────────────────────────────
 
 interface GoogleEventRaw {
   id: string;
@@ -178,6 +115,7 @@ interface GoogleEventRaw {
 }
 
 function toCalendarEvent(ev: GoogleEventRaw): CalendarEvent {
+  const isAllDay = !ev.start?.dateTime;
   return {
     id: ev.id,
     summary: ev.summary || '(sem título)',
@@ -188,40 +126,139 @@ function toCalendarEvent(ev: GoogleEventRaw): CalendarEvent {
     hangoutLink: ev.hangoutLink,
     organizerEmail: ev.organizer?.email,
     status: ev.status || 'confirmed',
+    isAllDay,
     attendees: (ev.attendees || []).map(a => ({
       email: a.email || '',
       displayName: a.displayName,
-      responseStatus: a.responseStatus,
+      responseStatus: a.responseStatus as CalendarAttendee['responseStatus'],
       self: a.self,
       organizer: a.organizer,
     })),
   };
 }
 
-/**
- * Calcula o intervalo da semana atual (segunda 00:00 → domingo 23:59:59)
- * no fuso horário do servidor (Vercel = UTC, mas timezone consciente).
- */
-export function getCurrentWeekRange(timezone = 'America/Sao_Paulo') {
+export async function listEvents(
+  accessToken: string,
+  fromIso: string,
+  toIso: string,
+  calendarId = 'primary'
+): Promise<CalendarEvent[]> {
+  const url = new URL(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
+  );
+  url.searchParams.set('timeMin', fromIso);
+  url.searchParams.set('timeMax', toIso);
+  url.searchParams.set('singleEvents', 'true');
+  url.searchParams.set('orderBy', 'startTime');
+  url.searchParams.set('maxResults', '100');
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Google Calendar API ${res.status}: ${txt}`);
+  }
+
+  const json = (await res.json()) as { items?: GoogleEventRaw[] };
+  return (json.items || [])
+    .filter(ev => ev.status !== 'cancelled')
+    .map(toCalendarEvent);
+}
+
+// ─── Sync: upsert eventos no Supabase ────────────────────────────────────────
+
+export async function syncEventsToSupabase(
+  supabase: SupabaseClient,
+  userId: string,
+  events: CalendarEvent[],
+  rangeFrom: string,
+  rangeTo: string
+): Promise<{ upserted: number; error?: string }> {
+  if (events.length === 0) {
+    await supabase.from('calendar_sync_log').insert({
+      user_id: userId,
+      events_upserted: 0,
+      range_from: rangeFrom,
+      range_to: rangeTo,
+    });
+    return { upserted: 0 };
+  }
+
+  const rows: Omit<CalendarEventDB, 'briefing_gerado' | 'relatorio_gerado' | 'followup_gerado'>[] = events.map(ev => ({
+    id: ev.id,
+    user_id: userId,
+    google_id: ev.id,
+    summary: ev.summary,
+    description: ev.description ?? null,
+    start_at: ev.start,
+    end_at: ev.end,
+    location: ev.location ?? null,
+    hangout_link: ev.hangoutLink ?? null,
+    organizer_email: ev.organizerEmail ?? null,
+    attendees: ev.attendees as unknown as CalendarAttendee[],
+    status: ev.status,
+    is_all_day: ev.isAllDay,
+    synced_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from('calendar_events')
+    .upsert(rows, {
+      onConflict: 'id,user_id',
+      ignoreDuplicates: false,   // atualiza campos não-vinculação
+    });
+
+  if (error) {
+    console.error('[syncEvents] erro no upsert:', error.message);
+    await supabase.from('calendar_sync_log').insert({
+      user_id: userId,
+      events_upserted: 0,
+      range_from: rangeFrom,
+      range_to: rangeTo,
+      error: error.message,
+    });
+    return { upserted: 0, error: error.message };
+  }
+
+  await supabase.from('calendar_sync_log').insert({
+    user_id: userId,
+    events_upserted: events.length,
+    range_from: rangeFrom,
+    range_to: rangeTo,
+  });
+
+  return { upserted: events.length };
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+/** Próximos N dias a partir de agora */
+export function getNextDaysRange(days = 30, timezone = 'America/Sao_Paulo') {
   const now = new Date();
-  // Convertemos para o TZ desejado para encontrar segunda-feira corretamente
   const localStr = now.toLocaleString('en-US', { timeZone: timezone });
   const local = new Date(localStr);
+  local.setHours(0, 0, 0, 0);
+  const to = new Date(local);
+  to.setDate(local.getDate() + days);
+  to.setHours(23, 59, 59, 999);
+  return { from: local.toISOString(), to: to.toISOString() };
+}
 
-  const day = local.getDay(); // 0=dom, 1=seg ... 6=sab
-  // Segunda = 1. Quantos dias retroceder para chegar na segunda?
+/** Semana atual (segunda → domingo) */
+export function getCurrentWeekRange(timezone = 'America/Sao_Paulo') {
+  const now = new Date();
+  const localStr = now.toLocaleString('en-US', { timeZone: timezone });
+  const local = new Date(localStr);
+  const day = local.getDay();
   const daysFromMonday = day === 0 ? 6 : day - 1;
-
   const monday = new Date(local);
   monday.setDate(local.getDate() - daysFromMonday);
   monday.setHours(0, 0, 0, 0);
-
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
-
-  return {
-    from: monday.toISOString(),
-    to: sunday.toISOString(),
-  };
+  return { from: monday.toISOString(), to: sunday.toISOString() };
 }

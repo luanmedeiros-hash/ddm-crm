@@ -88,3 +88,46 @@ export interface Tendencia {
   dir: 'up' | 'down' | 'flat';
   delta: number;
 }
+
+// ─── Google Calendar ──────────────────────────────────────────────────────────
+
+export interface CalendarEventDB {
+  id: string;
+  user_id: string;
+  google_id: string;
+  summary: string;
+  description?: string | null;
+  start_at: string;        // ISO 8601
+  end_at: string;
+  location?: string | null;
+  hangout_link?: string | null;
+  organizer_email?: string | null;
+  attendees: CalendarAttendee[];
+  status: string;
+  is_all_day: boolean;
+  synced_at: string;
+  // Vinculação a lead
+  lead_id?: string | null;
+  lead_nome?: string | null;
+  lead_notas?: string | null;
+  // Flags de features futuras
+  briefing_gerado: boolean;
+  transcricao_url?: string | null;
+  relatorio_gerado: boolean;
+  followup_gerado: boolean;
+}
+
+export interface CalendarAttendee {
+  email: string;
+  displayName?: string;
+  responseStatus?: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+  self?: boolean;
+  organizer?: boolean;
+}
+
+export interface SyncResult {
+  ok: boolean;
+  upserted: number;
+  range: { from: string; to: string };
+  error?: string;
+}
