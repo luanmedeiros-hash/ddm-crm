@@ -34,6 +34,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' } },
   { key: 'bigpoints', icon: 'star', label: 'Big Points' },
   { key: 'simulador', icon: 'sim', label: 'Simulador' },
+  { key: 'perfil', icon: 'user', label: 'Perfil DISC', badge: { txt: '🔒 Líder', cls: '' } },
 ];
 
 const NAV_ITEMS = ALL_NAV_ITEMS.filter(n => !n.flag || FEATURES[n.flag]);

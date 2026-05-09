@@ -20,6 +20,7 @@ import BigPoints from './secoes/BigPoints';
 import Simulador from './secoes/Simulador';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
+import PerfilComportamental from './secoes/PerfilComportamental';
 import { FEATURES } from '@/lib/features';
 
 interface Props {
@@ -503,6 +504,7 @@ export default function DashboardClient({ registros, userEmail, userName }: Prop
         {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} />}
+        {activeTab === 'perfil' && <PerfilComportamental filtroConsultor={filtroConsultor} onSelect={setSelectedConsultor} />}
       </main>
 
       {selectedConsultor && (
