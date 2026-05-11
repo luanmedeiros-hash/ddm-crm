@@ -4,13 +4,6 @@ import { FEATURES } from '@/lib/features';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Callback do OAuth (Google).
- * 1. Troca o code pela sessão Supabase.
- * 2. (Quando FEATURES.GOOGLE_CALENDAR estiver ligada) captura
- *    provider_token + provider_refresh_token e salva em google_tokens.
- * 3. Redireciona para /, que decide /dashboard ou /daily.
- */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
@@ -34,7 +27,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  // Captura tokens do provedor Google e armazena em google_tokens
   if (FEATURES.GOOGLE_CALENDAR || FEATURES.CALENDAR_DAILY) {
     const session = data?.session;
     const userId = session?.user?.id;
@@ -42,7 +34,11 @@ export async function GET(request: Request) {
     const providerRefreshToken = session?.provider_refresh_token;
 
     if (userId && providerToken) {
-      const expiresAt = new Date(Date.now() + 55 * 60 * 1000).toISOString();
+      // Usa expires_in da sessão se disponível; fallback 55min
+      const expiresIn: number = (session as unknown as Record<string, unknown>)?.provider_token_expiry
+        ? Number((session as unknown as Record<string, unknown>).provider_token_expiry)
+        : 3600;
+      const expiresAt = new Date(Date.now() + (expiresIn - 60) * 1000).toISOString();
 
       const tokenRow: Record<string, unknown> = {
         user_id: userId,
