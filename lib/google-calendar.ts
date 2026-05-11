@@ -10,7 +10,7 @@ export interface CalendarEvent {
   id: string;
   summary: string;
   description?: string;
-  start: string;           // ISO 8601
+  start: string;
   end: string;
   location?: string;
   hangoutLink?: string;
@@ -39,7 +39,7 @@ async function refreshAccessToken(
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    console.error('[google-calendar] GOOGLE_CLIENT_ID/SECRET não configurados');
+    console.warn('[google-calendar] GOOGLE_CLIENT_ID/SECRET não configurados — não é possível renovar token');
     return null;
   }
 
@@ -82,15 +82,34 @@ export async function getValidAccessToken(
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    console.warn('[google-calendar] token não encontrado para userId:', userId);
+    return null;
+  }
   const row = data as TokenRow;
 
+  // Token ainda válido por mais de 2 minutos → retorna direto sem tentar refresh
   if (row.expires_at) {
     const expiresMs = new Date(row.expires_at).getTime();
-    if (expiresMs - Date.now() > 30_000) return row.access_token;
+    if (expiresMs - Date.now() > 120_000) {
+      return row.access_token;
+    }
+  } else {
+    // Sem expires_at: retorna o token e tenta renovar em background
+    return row.access_token;
   }
 
-  return refreshAccessToken(supabase, row);
+  // Token próximo de expirar ou expirado → tenta refresh
+  const refreshed = await refreshAccessToken(supabase, row);
+  // Se refresh falhou mas token ainda não expirou de fato, usa o atual
+  if (!refreshed && row.expires_at) {
+    const expiresMs = new Date(row.expires_at).getTime();
+    if (expiresMs > Date.now()) {
+      console.warn('[google-calendar] refresh falhou mas token ainda válido, usando access_token atual');
+      return row.access_token;
+    }
+  }
+  return refreshed;
 }
 
 // ─── Google Calendar API ──────────────────────────────────────────────────────
@@ -168,7 +187,30 @@ export async function listEvents(
     .map(toCalendarEvent);
 }
 
-// ─── Sync: upsert eventos no Supabase ────────────────────────────────────────
+// ─── Sync: upsert eventos no Supabase ─────────────────────────────────────────
+
+/** Registra no sync_log — fire-and-forget, não bloqueia o fluxo principal */
+async function logSync(
+  supabase: SupabaseClient,
+  userId: string,
+  upserted: number,
+  rangeFrom: string,
+  rangeTo: string,
+  errorMsg?: string
+) {
+  try {
+    await supabase.from('calendar_sync_log').insert({
+      user_id: userId,
+      events_upserted: upserted,
+      range_from: rangeFrom,
+      range_to: rangeTo,
+      ...(errorMsg ? { error: errorMsg } : {}),
+    });
+  } catch (e) {
+    // Log silencioso — não quebra o fluxo de sync
+    console.warn('[google-calendar] sync_log insert falhou (RLS?):', e);
+  }
+}
 
 export async function syncEventsToSupabase(
   supabase: SupabaseClient,
@@ -178,12 +220,7 @@ export async function syncEventsToSupabase(
   rangeTo: string
 ): Promise<{ upserted: number; error?: string }> {
   if (events.length === 0) {
-    await supabase.from('calendar_sync_log').insert({
-      user_id: userId,
-      events_upserted: 0,
-      range_from: rangeFrom,
-      range_to: rangeTo,
-    });
+    void logSync(supabase, userId, 0, rangeFrom, rangeTo);
     return { upserted: 0 };
   }
 
@@ -206,36 +243,21 @@ export async function syncEventsToSupabase(
 
   const { error } = await supabase
     .from('calendar_events')
-    .upsert(rows, {
-      onConflict: 'id,user_id',
-      ignoreDuplicates: false,   // atualiza campos não-vinculação
-    });
+    .upsert(rows, { onConflict: 'id,user_id', ignoreDuplicates: false });
 
   if (error) {
     console.error('[syncEvents] erro no upsert:', error.message);
-    await supabase.from('calendar_sync_log').insert({
-      user_id: userId,
-      events_upserted: 0,
-      range_from: rangeFrom,
-      range_to: rangeTo,
-      error: error.message,
-    });
+    void logSync(supabase, userId, 0, rangeFrom, rangeTo, error.message);
     return { upserted: 0, error: error.message };
   }
 
-  await supabase.from('calendar_sync_log').insert({
-    user_id: userId,
-    events_upserted: events.length,
-    range_from: rangeFrom,
-    range_to: rangeTo,
-  });
-
+  // Log em background — não bloqueia o retorno
+  void logSync(supabase, userId, events.length, rangeFrom, rangeTo);
   return { upserted: events.length };
 }
 
-// ─── Date helpers ─────────────────────────────────────────────────────────────
+// ─── Date helpers ──────────────────────────────────────────────────────────────
 
-/** Próximos N dias a partir de agora */
 export function getNextDaysRange(days = 30, timezone = 'America/Sao_Paulo') {
   const now = new Date();
   const localStr = now.toLocaleString('en-US', { timeZone: timezone });
@@ -247,7 +269,6 @@ export function getNextDaysRange(days = 30, timezone = 'America/Sao_Paulo') {
   return { from: local.toISOString(), to: to.toISOString() };
 }
 
-/** Semana atual (segunda → domingo) */
 export function getCurrentWeekRange(timezone = 'America/Sao_Paulo') {
   const now = new Date();
   const localStr = now.toLocaleString('en-US', { timeZone: timezone });
