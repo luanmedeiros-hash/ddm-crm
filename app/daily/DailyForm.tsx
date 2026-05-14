@@ -388,16 +388,11 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
           </div>
         </form>
 
-<<<<<<< HEAD
-        {/* Agenda Google Calendar — sync manual + vinculação a leads */}
         {FEATURES.CALENDAR_DAILY && (
           <div style={{ marginTop: 28, padding: '20px 0 0', borderTop: '1px solid var(--line)' }}>
             <AgendaConsultor userId={userId} />
           </div>
         )}
-=======
-        {FEATURES.CALENDAR_DAILY && <AgendaConsultor consultorNome={consultorNome} isLider={isLider} />}
->>>>>>> ab38a8a (feat: DailyForm com abas Meta/Resultado usando CSS nativo)
       </div>
 
       {toast && (
