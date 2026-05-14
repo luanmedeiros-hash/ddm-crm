@@ -44,7 +44,7 @@ function LoginInner() {
       <div className="login-stage-v3">
         <MarkerHighlight
           before="Bem-vindo ao "
-          highlight="Baldada"
+          highlight="Teamires"
           after="."
           markerColor={MARKER_BLUE}
           baseColor="#0f172a"
