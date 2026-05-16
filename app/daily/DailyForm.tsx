@@ -36,7 +36,7 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
   const [metas, setMetas] = useState<Record<string, number>>(() => {
     const v: Record<string, number> = {};
     ETAPAS.forEach(et => {
-      v[et] = Number((registroExistente as any)?.[`${et}_meta`]) || METAS_BASE[et];
+      v[et] = Number((registroExistente as any)?.[et + '_meta']) || METAS_BASE[et];
     });
     return v;
   });
@@ -44,7 +44,7 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
   const [reais, setReais] = useState<Record<string, number>>(() => {
     const v: Record<string, number> = {};
     ETAPAS.forEach(et => {
-      v[et] = Number((registroExistente as any)?.[`${et}_real`]) || 0;
+      v[et] = Number((registroExistente as any)?.[et + '_real']) || 0;
     });
     return v;
   });
@@ -91,8 +91,8 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
       observacoes,
     };
     ETAPAS.forEach(et => {
-      payload[`${et}_meta`] = metas[et];
-      payload[`${et}_real`] = reais[et];
+      payload[et + '_meta'] = metas[et];
+      payload[et + '_real'] = reais[et];
     });
 
     const { error } = await supabase
@@ -102,10 +102,10 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
     setSaving(false);
 
     if (error) {
-      showToast(`Erro ao salvar: ${error.message}`, true);
+      showToast('Erro ao salvar: ' + error.message, true);
     } else {
-      showToast('✓ Daily salva com sucesso!');
-      router.refresh();
+      showToast('Daily salva com sucesso!');
+      setTimeout(() => router.push('/dashboard'), 1200);
     }
   };
 
@@ -118,232 +118,156 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
           background: 'var(--primary)',
           color: '#fff',
           borderRadius: 14,
-          padding: '20px 24px',
+          padding: '20px 28px',
           marginBottom: 24,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div>
-            <div style={{ fontSize: 12, opacity: .65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
-              Daily
-            </div>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: '-.02em' }}>
-              Olá, {consultorNome}
-            </h1>
-            <div style={{ fontSize: 13, opacity: .6, marginTop: 4 }}>{dataFormatada}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Daily Baldada</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>Ola, {consultorNome}</div>
+            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>{dataFormatada}</div>
           </div>
-          {isLider && (
-            <button
-              type="button"
-              className="action-btn"
-              onClick={() => router.push('/dashboard')}
-              style={{
-                background: 'rgba(255,255,255,.15)',
-                border: '1px solid rgba(255,255,255,.3)',
-                color: '#fff',
-              }}
-            >
-              <Icon name="dashboard" size={14} /> Dashboard
-            </button>
-          )}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>Progresso</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{aba === 'meta' ? progMeta : progReal}/11</div>
+          </div>
         </div>
 
         {/* Abas */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {(['meta', 'resultado'] as Aba[]).map(id => {
-            const label = id === 'meta' ? '🎯 Meta de hoje' : '📊 Resultado de ontem';
-            const active = aba === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setAba(id)}
-                style={{
-                  flex: 1,
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  border: active ? '2px solid var(--primary)' : '2px solid var(--line)',
-                  background: active ? 'var(--primary)' : 'var(--bg-card)',
-                  color: active ? '#fff' : 'var(--text)',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  transition: 'all .15s',
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
+          {(['meta', 'resultado'] as Aba[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setAba(tab)}
+              style={{
+                flex: 1, padding: '10px 16px', borderRadius: 10,
+                border: '1.5px solid ' + (aba === tab ? 'var(--primary)' : 'var(--line)'),
+                background: aba === tab ? 'var(--primary)' : 'var(--bg-soft)',
+                color: aba === tab ? '#fff' : 'var(--text)',
+                fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              }}
+            >
+              {tab === 'meta' ? 'Meta de hoje' : 'Resultado de ontem'}
+              <span style={{ marginLeft: 8, opacity: 0.7, fontSize: 12 }}>
+                ({tab === 'meta' ? progMeta : progReal}/11)
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Barra de progresso */}
+        <div style={{ height: 6, background: 'var(--line)', borderRadius: 4, marginBottom: 24, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%',
+            width: ((aba === 'meta' ? progMeta : progReal) / 11 * 100) + '%',
+            background: 'var(--primary)', borderRadius: 4, transition: 'width .3s',
+          }} />
         </div>
 
         <form onSubmit={handleSubmit}>
 
-          {/* ── ABA META ── */}
+          {/* ABA META */}
           {aba === 'meta' && (
-            <>
-              <div className="card" style={{ marginBottom: 16, padding: '14px 20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>Progresso das metas</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-                    {progMeta} / {ETAPAS.length}
-                  </span>
-                </div>
-                <div style={{ height: 8, background: 'var(--line)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(progMeta / ETAPAS.length) * 100}%`,
-                    background: 'var(--primary)',
-                    borderRadius: 99,
-                    transition: 'width .3s',
-                  }} />
-                </div>
-              </div>
-
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="card-head">
-                  <h3>📈 Meta de etapas · o que planejo hoje</h3>
-                </div>
+            <div>
+              {/* Funil metas */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-head"><span>Funil consultivo — metas de hoje</span></div>
                 <div className="form-grid">
                   {ETAPAS.map(et => (
-                    <div key={et} className="field">
+                    <div className="field" key={et}>
                       <label title={SIGNIFICADOS[et]}>{et}</label>
                       <input
-                        type="number"
-                        min="0"
+                        type="number" min={0}
                         value={metas[et]}
-                        onChange={e => setMetas({ ...metas, [et]: parseInt(e.target.value) || 0 })}
+                        onChange={e => setMetas(p => ({ ...p, [et]: Number(e.target.value) }))}
+                        placeholder={String(METAS_BASE[et])}
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="card-head">
-                  <h3>🎯 Big Points do dia · mínimo 3</h3>
-                </div>
-                <div className="form-grid">
+              {/* Big Points */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-head"><span>Big Points do dia</span></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {bigPoints.map((bp, i) => (
-                    <div key={i} className="field span-4">
-                      <label>Big Point {i + 1}</label>
-                      <input
-                        type="text"
-                        value={bp}
-                        onChange={e => {
-                          const n = [...bigPoints];
-                          n[i] = e.target.value;
-                          setBigPoints(n);
-                        }}
-                        placeholder="Ex: Cotar seguro do cliente João"
-                      />
-                    </div>
-                  ))}
-                  <div className="field span-4">
-                    <label>Prioridade do dia</label>
                     <input
-                      type="text"
-                      value={prioridade}
-                      onChange={e => setPrioridade(e.target.value)}
-                      placeholder="Ex: Reunião de fechamento às 15h"
+                      key={i} type="text"
+                      placeholder={'Big Point ' + (i + 1)}
+                      value={bp}
+                      onChange={e => setBigPoints(prev => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                      style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', fontSize: 14 }}
                     />
-                  </div>
+                  ))}
                 </div>
               </div>
-            </>
+
+              {/* Confiança meta */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-head"><span>Confianca para hoje</span></div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[1,2,3,4,5].map(n => (
+                    <button
+                      key={n} type="button"
+                      onClick={() => setConfianca(n)}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 8,
+                        border: '1px solid ' + (confianca === n ? 'var(--primary)' : 'var(--line)'),
+                        background: confianca === n ? 'var(--primary)' : 'var(--bg-soft)',
+                        color: confianca === n ? '#fff' : 'var(--text)',
+                        fontWeight: 700, fontSize: 15, cursor: 'pointer',
+                      }}
+                    >{n}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* ── ABA RESULTADO ── */}
+          {/* ABA RESULTADO */}
           {aba === 'resultado' && (
-            <>
-              <div className="card" style={{ marginBottom: 16, padding: '14px 20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>Etapas registradas</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ok)' }}>
-                    {progReal} / {ETAPAS.length}
-                  </span>
-                </div>
-                <div style={{ height: 8, background: 'var(--line)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(progReal / ETAPAS.length) * 100}%`,
-                    background: 'var(--ok)',
-                    borderRadius: 99,
-                    transition: 'width .3s',
-                  }} />
-                </div>
-              </div>
-
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="card-head">
-                  <h3>📊 Resultado de ontem · real vs meta</h3>
-                </div>
+            <div>
+              {/* Funil real */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-head"><span>Funil consultivo — resultado de ontem</span></div>
                 <div className="form-grid">
                   {ETAPAS.map(et => {
+                    const meta = METAS_BASE[et] ?? 0;
                     const val = reais[et];
-                    const metaBase = METAS_BASE[et];
-                    const preenchido = val > 0;
-                    const atingiu = val >= metaBase;
+                    const ok = val >= meta;
                     return (
-                      <div key={et} className="field">
-                        <label title={SIGNIFICADOS[et]} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          {et}
-                          {preenchido && (
-                            <span style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: atingiu ? 'var(--ok)' : 'var(--crit)',
-                            }}>
-                              {atingiu ? '✓' : '↓'}
-                            </span>
-                          )}
+                      <div className="field" key={et}>
+                        <label style={{ display: 'flex', justifyContent: 'space-between' }} title={SIGNIFICADOS[et]}>
+                          <span>{et}</span>
+                          {val > 0 && <span style={{ color: ok ? 'var(--ok)' : 'var(--crit)', fontWeight: 700 }}>{ok ? '✓' : '↓'}</span>}
                         </label>
                         <input
-                          type="number"
-                          min="0"
+                          type="number" min={0}
                           value={val}
-                          onChange={e => setReais({ ...reais, [et]: parseInt(e.target.value) || 0 })}
-                          style={{
-                            borderColor: preenchido
-                              ? atingiu ? 'var(--ok)' : 'var(--crit)'
-                              : undefined,
-                          }}
+                          onChange={e => setReais(p => ({ ...p, [et]: Number(e.target.value) }))}
+                          placeholder={String(meta)}
                         />
-                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                          meta: {metaBase}
-                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="card" style={{ marginBottom: 16 }}>
-                <div className="card-head">
-                  <h3>🚦 Status</h3>
-                </div>
+              {/* Status resultado */}
+              <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card-head"><span>Status do dia</span></div>
                 <div className="form-grid">
                   <div className="field">
-                    <label>Confiança (1-5)</label>
-                    <select value={confianca} onChange={e => setConfianca(parseInt(e.target.value))}>
-                      {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                  <div className="field">
                     <label>Contatos quentes</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={cttQuente}
-                      onChange={e => setCttQuente(parseInt(e.target.value) || 0)}
-                    />
+                    <input type="number" min={0} value={cttQuente} onChange={e => setCttQuente(Number(e.target.value))} />
                   </div>
                   <div className="field">
                     <label>Precisa de ajuda?</label>
                     <select value={ajuda} onChange={e => setAjuda(e.target.value)}>
-                      <option>Não</option>
-                      <option>Sim</option>
+                      <option>Não</option><option>Sim</option>
                     </select>
                   </div>
                   <div className="field">
@@ -354,50 +278,54 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
                   </div>
                   {bloqueio !== 'Sem bloqueio' && (
                     <div className="field span-4">
-                      <label>Descrição do bloqueio</label>
-                      <input
-                        type="text"
-                        value={bloqueioDesc}
-                        onChange={e => setBloqueioDesc(e.target.value)}
-                        placeholder={ACOES_BLOQUEIO[bloqueio] || 'Descreva o bloqueio'}
-                      />
+                      <label>Descricao do bloqueio</label>
+                      <input type="text" value={bloqueioDesc} onChange={e => setBloqueioDesc(e.target.value)} placeholder="Descreva o bloqueio..." />
                     </div>
                   )}
                   <div className="field span-4">
-                    <label>Avanço do dia</label>
-                    <input
-                      type="text"
-                      value={avanco}
-                      onChange={e => setAvanco(e.target.value)}
-                      placeholder="Ex: Cliente confirmou interesse na proposta"
-                    />
+                    <label>Avanco do dia</label>
+                    <input type="text" value={avanco} onChange={e => setAvanco(e.target.value)} placeholder="O que avancou hoje?" />
                   </div>
                   <div className="field span-4">
-                    <label>Observações</label>
-                    <textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} />
+                    <label>Prioridade de amanha</label>
+                    <input type="text" value={prioridade} onChange={e => setPrioridade(e.target.value)} placeholder="Principal foco para amanha?" />
+                  </div>
+                  <div className="field span-4">
+                    <label>Observacoes</label>
+                    <textarea rows={2} value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Observacoes gerais..." style={{ resize: 'vertical' }} />
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="action-btn primary" disabled={saving}>
-              {saving ? 'Salvando...' : registroExistente ? '✓ Atualizar daily' : '✓ Salvar daily'}
-            </button>
-          </div>
+          {/* Botao salvar */}
+          <button
+            type="submit"
+            disabled={saving}
+            className="action-btn primary"
+            style={{ width: '100%', padding: '14px', fontSize: 16, fontWeight: 700, marginBottom: 16 }}
+          >
+            {saving ? 'Salvando...' : 'Salvar daily e ir para o dashboard'}
+          </button>
+
         </form>
 
-        {FEATURES.CALENDAR_DAILY && (
-          <div style={{ marginTop: 28, padding: '20px 0 0', borderTop: '1px solid var(--line)' }}>
-            <AgendaConsultor userId={userId} />
+        {/* Toast */}
+        {toast && (
+          <div style={{
+            position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+            background: toast.isError ? 'var(--crit)' : 'var(--ok)',
+            color: '#fff', padding: '12px 24px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+            boxShadow: '0 4px 20px rgba(0,0,0,.2)', zIndex: 1000,
+          }}>
+            {toast.msg}
           </div>
         )}
-      </div>
 
-      {toast && (
-        <div className={`toast${toast.isError ? ' error' : ''}`}>{toast.msg}</div>
-      )}
+        {/* Agenda */}
+        {FEATURES.CALENDAR_DAILY && <AgendaConsultor userId={userId} />}
+      </div>
     </div>
   );
 }
