@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { calcConversoes, calcIndice, classificar, fmtData, fmtDataBR, regsValidos, intervaloUltimosDias, ultimosDiasUteis, tipoDia } from '@/lib/calculos';
 import { CONSULTORES, METRICAS_4 } from '@/lib/constants';
 import type { RegInterno } from '@/lib/types';
-import Sidebar, { type ConsultorAtivo } from '@/components/Sidebar';
+import Sidebar, { type ConsultorAtivo } from '@/components/Sidebar'
 import Icon from '@/components/Icon';
 import Avatar from './components/Avatar';
 import SparkLine from './components/SparkLine';
@@ -24,12 +24,12 @@ import PerfilComportamental from './secoes/PerfilComportamental';
 import { FEATURES } from '@/lib/features';
 
 interface Props {
-  registros: RegInterno[];        // todos os registros (já convertidos)
+  registros: RegInterno[];
   userEmail: string;
   userName: string;
+  isLider: boolean;
 }
-
-export default function DashboardClient({ registros, userEmail, userName }: Props) {
+export default function DashboardClient({ registros, userEmail, userName, isLider }: Props) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [periodo, setPeriodo] = useState('semanal');
   const [filtroConsultor, setFiltroConsultor] = useState('');
