@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { MarkerHighlight } from '@/components/ui/marker-highlight';
 
-// Azul "balde" — azul-aço médio, harmoniza com slate-900
 const MARKER_BLUE = '#4a90c8';
 
 function LoginInner() {
@@ -44,7 +43,7 @@ function LoginInner() {
       <div className="login-stage-v3">
         <MarkerHighlight
           before="Bem-vindo ao "
-          highlight="Teamires"
+          highlight="Baldada"
           after="."
           markerColor={MARKER_BLUE}
           baseColor="#0f172a"
