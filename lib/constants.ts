@@ -1,15 +1,31 @@
 import type { Etapa } from './types';
 
-// 14 consultores da equipe
+// Consultores da equipe Baldada (ordem alfabética)
 export const CONSULTORES = [
-  'Bacco', 'Bottoni', 'Danilo', 'Davi', 'Duarte', 'Eric', 'Faria',
-  'Júlio', 'Mel', 'Pedro', 'PH', 'Rafael', 'Salgado', 'Shoji'
+  'Bacco',
+  'Danilo',
+  'Davi',
+  'Duarte',
+  'Eric',
+  'Faria',
+  'Júlio',
+  'Marcelo',
+  'Mel',
+  'Pedro',
+  'PH',
+  'Rafael',
+  'Salgado',
+  'Shoji',
+  'Zonaro',
 ] as const;
 
 // Consultores que entraram recentemente (badge "NOVO")
-export const CONSULTORES_NOVOS = ['Pedro', 'Mel', 'Rafael', 'Bacco', 'Bottoni'] as const;
+export const CONSULTORES_NOVOS = [
+  'Marcelo',
+  'Zonaro',
+] as const;
 
-// 11 etapas do funil consultivo DDM
+// 11 etapas do funil consultivo
 export const ETAPAS: Etapa[] = [
   'AA', 'CA', 'SA', 'EA',
   'AF', 'CF', 'SF', 'EF',

@@ -26,7 +26,7 @@ interface Props {
 
 export default function DailyForm({ userId, consultorNome, registroExistente, isLider }: Props) {
   const router = useRouter();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const dataFormatada = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
@@ -79,7 +79,6 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
     const payload: Record<string, unknown> = {
       user_id: userId,
       data: hoje,
-      consultor_nome: consultorNome,
       ctt_quente: cttQuente,
       bloqueio,
       bloqueio_desc: bloqueio !== 'Sem bloqueio' ? bloqueioDesc : '',

@@ -9,9 +9,10 @@ interface Props {
   todosRegs: RegInterno[];
   dataRef: string;
   filtroConsultor: string;
+  consultores: string[];
 }
 
-export default function Historico({ todosRegs, dataRef, filtroConsultor }: Props) {
+export default function Historico({ todosRegs, dataRef, filtroConsultor, consultores }: Props) {
   const ref = new Date(dataRef + 'T12:00:00');
   // Gerar todos os dias do mês de referência
   const ano = ref.getFullYear(), mes = ref.getMonth();
@@ -19,7 +20,7 @@ export default function Historico({ todosRegs, dataRef, filtroConsultor }: Props
   const diasMes: Date[] = [];
   for (let d = 1; d <= ultimoDia; d++) diasMes.push(new Date(ano, mes, d));
 
-  const consultoresFiltro = filtroConsultor ? [filtroConsultor] : CONSULTORES.slice();
+  const consultoresFiltro = filtroConsultor ? [filtroConsultor] : consultores.slice();
 
   return (
     <div className="card">

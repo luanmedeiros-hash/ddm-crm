@@ -10,7 +10,7 @@ export function toRegInterno(r: RegistroDaily): RegInterno {
   const tipoDia = (dow === 0 || dow === 6) ? 'fds' as const : 'util' as const;
   return {
     data: r.data,
-    consultor: r.consultor_nome,
+    consultor: r.profiles?.consultor_nome || '',
     AA:  { meta: Number(r.AA_meta) || 0,  real: Number(r.AA_real) || 0 },
     CA:  { meta: Number(r.CA_meta) || 0,  real: Number(r.CA_real) || 0 },
     SA:  { meta: Number(r.SA_meta) || 0,  real: Number(r.SA_real) || 0 },

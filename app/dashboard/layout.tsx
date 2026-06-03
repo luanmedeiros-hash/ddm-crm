@@ -7,16 +7,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  // Liderado é redirecionado para /daily
-  if (profile?.role !== 'lider') {
-    redirect('/daily');
-  }
-
   return <>{children}</>;
 }

@@ -10,6 +10,7 @@ interface Props {
   consultoresPreencheram: Set<string>;
   dataAlvo: string;
   periodo: string;
+  consultores: string[];
 }
 
 interface AlertItem {
@@ -19,15 +20,15 @@ interface AlertItem {
   who: string;
 }
 
-export default function Alertas({ filtered, consultoresPreencheram, dataAlvo, periodo }: Props) {
+export default function Alertas({ filtered, consultoresPreencheram, dataAlvo, periodo, consultores }: Props) {
   const alerts = useMemo<AlertItem[]>(() => {
     const arr: AlertItem[] = [];
     if (periodo === 'diario') {
-      CONSULTORES.forEach(c => {
+      consultores.forEach(c => {
         if (!consultoresPreencheram.has(c)) arr.push({ lvl: 'crit', t: 'Sem preenchimento hoje', d: `Não houve registro em ${fmtDataBR(new Date(dataAlvo))}`, who: c });
       });
     }
-    CONSULTORES.forEach(c => {
+    consultores.forEach(c => {
       const regs = filtered.filter(r => r.consultor === c);
       if (!regs.length) return;
       const indice = calcIndice(regs).indice;

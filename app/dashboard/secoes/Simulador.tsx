@@ -8,12 +8,13 @@ const METAS_BASE: Record<string, number> = { AA: 3, CA: 2, SA: 2, EA: 1, AF: 2, 
 
 interface Props {
   onSubmit: (msg: string, isError?: boolean) => void;
+  consultores: string[];
 }
 
-export default function Simulador({ onSubmit }: Props) {
+export default function Simulador({ onSubmit, consultores }: Props) {
   const dias = ultimosDiasUteis(1);
   const [data, setData] = useState(fmtData(dias[0]));
-  const [consultor, setConsultor] = useState<string>(CONSULTORES[0]);
+  const [consultor, setConsultor] = useState<string>(consultores[0] ?? '');
   const [valores, setValores] = useState<Record<string, { meta: number; real: number }>>(() => {
     const v: Record<string, { meta: number; real: number }> = {};
     ETAPAS.forEach(et => { v[et] = { meta: METAS_BASE[et], real: 0 }; });
@@ -45,7 +46,7 @@ export default function Simulador({ onSubmit }: Props) {
         <div className="field">
           <label>Consultor</label>
           <select value={consultor} onChange={e => setConsultor(e.target.value)}>
-            {CONSULTORES.map(c => <option key={c}>{c}</option>)}
+            {consultores.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div className="field">

@@ -9,7 +9,7 @@ export interface RegistroDaily {
   id: string;
   user_id: string;
   data: string; // 'YYYY-MM-DD'
-  consultor_nome: string;
+  profiles?: { consultor_nome: string | null } | null;
 
   // Etapas (meta + real para cada)
   AA_meta: number; AA_real: number;
@@ -115,6 +115,11 @@ export interface CalendarEventDB {
   transcricao_url?: string | null;
   relatorio_gerado: boolean;
   followup_gerado: boolean;
+  // Relatório gerado por IA
+  tipo_reuniao?: string | null;
+  transcricao?: string | null;
+  relatorio?: string | null;
+  relatorio_gerado_em?: string | null;
 }
 
 export interface CalendarAttendee {
@@ -130,4 +135,71 @@ export interface SyncResult {
   upserted: number;
   range: { from: string; to: string };
   error?: string;
+}
+
+// ─── Clientes e Contatos (área do consultor) ───────────────
+export type ClienteStatus = 'ativo' | 'inativo';
+
+export interface Cliente {
+  id: string;
+  user_id: string;
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+  status: ClienteStatus;
+  origem: string | null;
+  notas: string | null;
+  data_inicio: string | null;
+  c1: boolean;
+  c2: boolean;
+  c3: boolean;
+  c4: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type ContatoStatus = 'novo' | 'contatado' | 'reuniao_agendada' | 'convertido' | 'perdido';
+
+export interface Contato {
+  id: string;
+  user_id: string;
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+  status: ContatoStatus;
+  origem: string | null;
+  notas: string | null;
+  proximo_contato: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+
+// ─── Pessoa (unifica Cliente + Contato — refactor Opção A) ───
+// 'fase' diferencia lead (ex-contato) de cliente (ex-cliente).
+// status acomoda os dois conjuntos de valores antigos.
+export type PessoaFase = 'lead' | 'cliente';
+
+export type PessoaStatus = ContatoStatus | ClienteStatus;
+
+export interface Pessoa {
+  id: string;
+  user_id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  empresa: string | null;
+  fase: PessoaFase;
+  status: PessoaStatus;
+  origem: string | null;
+  notas: string | null;
+  proximo_contato: string | null;  // usado quando fase='lead'
+  data_inicio: string | null;      // usado quando fase='cliente'
+  c1: boolean;
+  c2: boolean;
+  c3: boolean;
+  c4: boolean;
+  convertido_em: string | null;
+  created_at?: string;
+  updated_at?: string;
 }

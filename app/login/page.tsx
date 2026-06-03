@@ -3,9 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { MarkerHighlight } from '@/components/ui/marker-highlight';
-
-const MARKER_BLUE = '#4a90c8';
+import ShaderBackground from '@/components/ShaderBackground';
 
 function LoginInner() {
   const searchParams = useSearchParams();
@@ -39,41 +37,54 @@ function LoginInner() {
   };
 
   return (
-    <div className="login-shell-v3">
-      <div className="login-stage-v3">
-        <MarkerHighlight
-          before="Bem-vindo ao "
-          highlight="Baldada"
-          after="."
-          markerColor={MARKER_BLUE}
-          baseColor="#0f172a"
-          highlightedTextColor="#ffffff"
-          backgroundColor="transparent"
-          fontSize={120}
-          fontWeight={700}
-          durationSec={3.5}
-        />
-      </div>
+    <div className="login-split">
+      <aside className="login-split-visual">
+        <ShaderBackground />
+        <div className="login-split-visual-content">
+          <div />
+          <div className="login-split-tagline">
+            <h1>A disciplina virou número.</h1>
+            <p>Cada daily preenchida é mais um passo na direção certa.</p>
+          </div>
+          <div className="login-split-footer">© 2026 Equipe Baldada · W1 Partner</div>
+        </div>
+      </aside>
 
-      <div className="login-cta-v3">
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={googleLoading}
-          className="google-btn-v3"
-        >
-          <GoogleIcon />
-          <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
-        </button>
-        {error && <div className="login-error-v3">{error}</div>}
-      </div>
+      <main className="login-split-form">
+        <div className="login-split-form-inner">
+          <div className="login-split-logo" style={{ width: 88, height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, lineHeight: 1 }}>🪣</div>
+
+          <div className="login-split-form-header">
+            <h2>CRM Baldada</h2>
+            <p>Faça login para continuar</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            className="login-split-google-btn"
+          >
+            <GoogleIcon />
+            <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
+          </button>
+
+          {error && <div className="login-split-error">{error}</div>}
+
+          <div className="login-split-divider" />
+
+          <div className="login-split-disclaimer">
+            Acesso restrito à equipe Baldada
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
       <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
       <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>

@@ -51,31 +51,6 @@ export const PERFIS_DISC: Record<string, PerfilComportamental> = {
     motivadores: ['Autonomia', 'Metas desafiadoras', 'Reconhecimento público', 'Superação de recordes pessoais'],
   },
 
-  Bottoni: {
-    disc: 'I',
-    pragmatico: 'Expressivo',
-    descricao: 'Comunicativo, entusiasta e persuasivo. Constrói relacionamentos com facilidade e tem alto impacto em apresentações.',
-    fortes: ['Ótimo rapport com clientes', 'Engaja facilmente', 'Criativo em abordagens', 'Influencia com entusiasmo'],
-    atencao: ['Pode dispersar nas tarefas do dia', 'Tende a superestimar compromissos', 'Pode negligenciar registro de dados'],
-    conduta_daily: [
-      'Comece com algo positivo — ele responde bem ao reconhecimento',
-      'Use storytelling: "Conta como foi essa reunião de ontem"',
-      'Ajude a priorizar — ele tem muitas ideias, ancore em 1 ou 2 ações concretas',
-      'Pergunte sobre o cliente pelo nome — ele memoriza detalhes relacionais',
-    ],
-    apoio_bloqueio: [
-      'Escute com empatia — ele precisa sentir que você está do lado dele',
-      'Ajude a enxergar a solução como uma "boa história para contar depois"',
-      'Ofereça roleplay da abordagem com o cliente bloqueado',
-    ],
-    feedback: [
-      'Inicie com pontos positivos genuínos antes de corrigir',
-      'Enquadre o feedback como "oportunidade de brilhar mais"',
-      'Evite críticas frias ou muito técnicas — use exemplos concretos e relacionais',
-    ],
-    motivadores: ['Reconhecimento da equipe', 'Variedade de situações', 'Liberdade criativa', 'Relação próxima com o líder'],
-  },
-
   Danilo: {
     disc: 'S',
     pragmatico: 'Afável',
@@ -226,6 +201,18 @@ export const PERFIS_DISC: Record<string, PerfilComportamental> = {
     motivadores: ['Superar metas', 'Ser referência em resultado no time', 'Autonomia', 'Desafios difíceis'],
   },
 
+  Marcelo: {
+    disc: 'D',
+    pragmatico: 'Pragmático',
+    descricao: 'Perfil ainda não validado — placeholder até aplicação do teste DISC.',
+    fortes: ['A definir após teste DISC'],
+    atencao: ['A definir após teste DISC'],
+    conduta_daily: ['A definir após teste DISC'],
+    apoio_bloqueio: ['A definir após teste DISC'],
+    feedback: ['A definir após teste DISC'],
+    motivadores: ['A definir após teste DISC'],
+  },
+
   Mel: {
     disc: 'I',
     pragmatico: 'Expressivo',
@@ -374,6 +361,18 @@ export const PERFIS_DISC: Record<string, PerfilComportamental> = {
       'Seja específico e gentil — ele internaliza muito o que o líder diz',
     ],
     motivadores: ['Sentir que faz a diferença para o cliente', 'Ambiente harmonioso no time', 'Reconhecimento pela dedicação', 'Relação de confiança com o líder'],
+  },
+
+  Zonaro: {
+    disc: 'D',
+    pragmatico: 'Pragmático',
+    descricao: 'Perfil ainda não validado — placeholder até aplicação do teste DISC.',
+    fortes: ['A definir após teste DISC'],
+    atencao: ['A definir após teste DISC'],
+    conduta_daily: ['A definir após teste DISC'],
+    apoio_bloqueio: ['A definir após teste DISC'],
+    feedback: ['A definir após teste DISC'],
+    motivadores: ['A definir após teste DISC'],
   },
 };
 

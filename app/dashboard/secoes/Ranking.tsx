@@ -12,11 +12,12 @@ interface Props {
   todosRegs: RegInterno[];
   range: string[];
   onSelect: (nome: string) => void;
+  consultores: string[];
 }
 
-export default function Ranking({ filtered, todosRegs, range, onSelect }: Props) {
+export default function Ranking({ filtered, todosRegs, range, onSelect, consultores }: Props) {
   const stats = useMemo(() => {
-    return CONSULTORES.map(c => {
+    return consultores.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
       const allRegsConsultor = regsValidos(todosRegs).filter(r => r.consultor === c);
       const ind = calcIndice(regs).indice;

@@ -20,6 +20,8 @@ import BigPoints from './secoes/BigPoints';
 import Simulador from './secoes/Simulador';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
+import Clientes from './secoes/Clientes';
+import Contatos from './secoes/Contatos';
 import PerfilComportamental from './secoes/PerfilComportamental';
 import { FEATURES } from '@/lib/features';
 
@@ -28,8 +30,28 @@ interface Props {
   userEmail: string;
   userName: string;
   isLider: boolean;
+  consultores?: string[];
 }
-export default function DashboardClient({ registros, userEmail, userName, isLider }: Props) {
+const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
+  dashboard: { titulo: 'Dashboard', sub: 'Acompanhe o funil consultivo da equipe em tempo real.' },
+  conversao: { titulo: 'Conversão', sub: 'Análise do funil de conversão da equipe.' },
+  alertas: { titulo: 'Alertas', sub: 'Consultores que precisam de atenção.' },
+  bloqueios: { titulo: 'Bloqueios', sub: 'Bloqueios reportados pela equipe.' },
+  ranking: { titulo: 'Ranking', sub: 'Classificação dos consultores no período.' },
+  historico: { titulo: 'Histórico', sub: 'Evolução dos registros ao longo do tempo.' },
+  bigpoints: { titulo: 'Big Points', sub: 'Acompanhamento dos Big Points da equipe.' },
+  simulador: { titulo: 'Simulador', sub: 'Simule cenários de conversão.' },
+  agenda: { titulo: 'Agenda', sub: 'Seus eventos sincronizados do Google Calendar.' },
+  'modo-daily': { titulo: 'Modo Daily', sub: 'Revisão rápida da equipe, um a um.' },
+  perfil: { titulo: 'Perfil Comportamental', sub: 'Perfil DISC dos consultores.' },
+  clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
+  contatos: { titulo: 'Contatos', sub: 'Seus leads e contatos em andamento.' },
+};
+
+export default function DashboardClient({ registros, userEmail, userName, isLider, consultores }: Props) {
+  // Fase 2A: lista vinda do banco, com fallback pra constante (rede de seguranca).
+  // Ainda nao consumida pelas telas — fase 2B faz a troca arquivo a arquivo.
+  const listaConsultores = (consultores && consultores.length > 0) ? consultores : [...CONSULTORES];
   const [activeTab, setActiveTab] = useState('dashboard');
   const [periodo, setPeriodo] = useState('semanal');
   const [filtroConsultor, setFiltroConsultor] = useState('');
@@ -83,7 +105,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   const consultoresPreencheram = new Set(todosValidos.filter(r => r.data === dataAlvo).map(r => r.consultor));
 
   const ativos: ConsultorAtivo[] = useMemo(() => {
-    return CONSULTORES.map(c => {
+    return listaConsultores.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
       const ult = regs.length ? [...regs].sort((a, b) => b.data.localeCompare(a.data))[0] : null;
       const status = ult ? classificar(ult) : 'Sem dados' as const;
@@ -149,7 +171,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return null;
-    const consultores = CONSULTORES.filter(c => c.toLowerCase().includes(q));
+    const consultores = listaConsultores.filter(c => c.toLowerCase().includes(q));
     const bigPoints: { texto: string; consultor: string; data: string }[] = [];
     const bloqueios: { tipo: string; desc: string; consultor: string; data: string }[] = [];
     todosValidos.forEach(r => {
@@ -166,7 +188,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   // Notificações
   const notifAlertas = useMemo(() => {
     const arr: { tipo: 'crit' | 'warn'; titulo: string; desc: string; who: string }[] = [];
-    CONSULTORES.forEach(c => {
+    listaConsultores.forEach(c => {
       const regs = filtered.filter(r => r.consultor === c);
       if (!regs.length) return;
       const indice = calcIndice(regs).indice;
@@ -235,6 +257,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         onTabChange={setActiveTab}
         onConsultorClick={handleConsultorClick}
         onClearConsultor={handleClearConsultor}
+        isLider={isLider}
       />
 
       <main className="main">
@@ -421,12 +444,12 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
               )}
             </div>
             <h1 className="sec-title">
-              {filtroConsultor ? filtroConsultor : 'Dashboard'}
+              {filtroConsultor ? filtroConsultor : (SEC_INFO[activeTab]?.titulo ?? 'Dashboard')}
             </h1>
             <div className="sec-sub">
               {filtroConsultor
                 ? <>Visão individual de <strong>{filtroConsultor}</strong>. <button className="link-btn" onClick={handleClearConsultor}>← Voltar para toda a equipe</button></>
-                : 'Acompanhe o funil consultivo da equipe em tempo real.'
+                : (SEC_INFO[activeTab]?.sub ?? 'Acompanhe o funil consultivo da equipe em tempo real.')
               }
             </div>
           </div>
@@ -450,7 +473,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
             <div className={`filter-pill ${filtroConsultor ? 'active' : ''}`} title={filtroConsultor ? `Filtrando por ${filtroConsultor}` : 'Filtrar por consultor'}>
               <select value={filtroConsultor} onChange={e => setFiltroConsultor(e.target.value)}>
                 <option value="">👥 Toda a equipe</option>
-                {CONSULTORES.map(c => <option key={c} value={c}>{c}</option>)}
+                {listaConsultores.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <Icon name="chevronDown" size={10} className="caret" />
             </div>
@@ -494,17 +517,19 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         )}
 
         {/* SEÇÕES */}
-        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} />}
+        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'conversao' && <Conversao filtered={filtered} />}
-        {activeTab === 'alertas' && <Alertas filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} />}
+        {activeTab === 'alertas' && <Alertas filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} consultores={listaConsultores} />}
         {activeTab === 'bloqueios' && <Bloqueios filtered={filtered} />}
-        {activeTab === 'ranking' && <Ranking filtered={filtered} todosRegs={registros} range={range} onSelect={setSelectedConsultor} />}
-        {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} />}
+        {activeTab === 'ranking' && <Ranking filtered={filtered} todosRegs={registros} range={range} onSelect={setSelectedConsultor} consultores={listaConsultores} />}
+        {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'bigpoints' && <BigPoints filtered={filtered} onSelect={setSelectedConsultor} />}
-        {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} />}
+        {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} consultores={listaConsultores} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
-        {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} />}
+        {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
         {activeTab === 'perfil' && <PerfilComportamental filtroConsultor={filtroConsultor} onSelect={setSelectedConsultor} />}
+        {activeTab === 'clientes' && <Clientes />}
+        {activeTab === 'contatos' && <Contatos />}
       </main>
 
       {selectedConsultor && (

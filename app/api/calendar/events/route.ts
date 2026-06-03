@@ -58,9 +58,10 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ ok: false, error: 'unauthenticated' }, { status: 401 });
 
   const body = await request.json();
-  const { eventId, userId, lead_nome, lead_notas } = body as {
+  const { eventId, userId, lead_id, lead_nome, lead_notas } = body as {
     eventId: string;
     userId: string;
+    lead_id?: string | null;
     lead_nome?: string | null;
     lead_notas?: string | null;
   };
@@ -85,6 +86,7 @@ export async function PATCH(request: NextRequest) {
   const { error } = await supabase
     .from('calendar_events')
     .update({
+      lead_id: lead_id ?? null,
       lead_nome: lead_nome ?? null,
       lead_notas: lead_notas ?? null,
     })

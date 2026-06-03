@@ -1,4 +1,4 @@
 export const FEATURES = {
-  GOOGLE_CALENDAR: false,
+  GOOGLE_CALENDAR: true,
   CALENDAR_DAILY: false,
 } as const;

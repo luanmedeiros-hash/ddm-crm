@@ -14,11 +14,12 @@ interface Props {
   filtered: RegInterno[];
   todosRegs: RegInterno[];
   range: string[];
+  consultores: string[];
 }
 
-export default function ModoDaily({ filtered, todosRegs, range }: Props) {
+export default function ModoDaily({ filtered, todosRegs, range, consultores }: Props) {
   const lista = useMemo(() => {
-    const stats = CONSULTORES.map(c => {
+    const stats = consultores.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
       const ult = regs.length ? [...regs].sort((a, b) => b.data.localeCompare(a.data))[0] : null;
       const status = ult ? classificar(ult) : 'Sem dados';
@@ -77,7 +78,7 @@ export default function ModoDaily({ filtered, todosRegs, range }: Props) {
   const goIdx = (i: number) => setIdx(Math.max(0, Math.min(lista.length - 1, i)));
 
   return (
-    <div className="theme-dark fade-in">
+    <div className="daily-light fade-in">
       <div className="daily-shell">
         <div className="daily-list">
           <div className="daily-list-header">

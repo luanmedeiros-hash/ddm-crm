@@ -21,11 +21,12 @@ interface Props {
   onGoTab: (tab: string) => void;
   onRefresh: () => void;
   filtroConsultor?: string;
+  consultores: string[];
 }
 
-export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh, filtroConsultor }: Props) {
+export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh, filtroConsultor, consultores }: Props) {
   const top3 = useMemo(() => {
-    return CONSULTORES.map(c => {
+    return consultores.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
       const ind = calcIndice(regs).indice;
       const trend = calcTendencia(regsValidos(todosRegs).filter(r => r.consultor === c));
@@ -75,7 +76,7 @@ export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTa
         </div>
       </div>
 
-      <Charts filtered={filtered} range={range} />
+      <Charts filtered={filtered} range={range} consultores={consultores} />
 
       {/* Agenda embutida quando estiver vendo perfil individual */}
       {FEATURES.GOOGLE_CALENDAR && filtroConsultor && (

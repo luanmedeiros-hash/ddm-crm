@@ -17,7 +17,7 @@ export default async function DailyPage() {
     .single();
 
   // Busca registro de hoje (se existir, vamos editar)
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   const { data: registroHoje } = await supabase
     .from('registros_daily')
     .select('*')

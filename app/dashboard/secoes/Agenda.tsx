@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import type { CalendarEventDB } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import type { CalendarEventDB, Pessoa } from '@/lib/types';
+import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, type TipoReuniao } from '@/lib/prompts-relatorio';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,22 +32,40 @@ function groupByDay(events: (CalendarEventDB & { _consultor?: string })[]) {
 
 // ─── Modal de vinculação ──────────────────────────────────────────────────────
 
-interface LinkState { ev: CalendarEventDB & { _consultor?: string }; userId: string; lead_nome: string; lead_notas: string; saving: boolean; }
+interface LinkState {
+  ev: CalendarEventDB & { _consultor?: string };
+  userId: string;
+  lead_id: string;       // '' = nenhum
+  lead_notas: string;
+  saving: boolean;
+}
 
-function LinkModal({ s, onChange, onSave, onClose }: { s: LinkState; onChange: (p: Partial<LinkState>) => void; onSave: () => void; onClose: () => void }) {
+function LinkModal({ s, pessoas, onChange, onSave, onClose }: { s: LinkState; pessoas: Pessoa[]; onChange: (p: Partial<LinkState>) => void; onSave: () => void; onClose: () => void }) {
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg)', borderRadius:14, padding:24, width:'100%', maxWidth:420, boxShadow:'0 20px 60px rgba(0,0,0,.3)', border:'1px solid var(--line)' }}>
-        <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Vincular lead</div>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:14, padding:24, width:'100%', maxWidth:420, boxShadow:'0 20px 60px rgba(0,0,0,.3)', border:'1px solid var(--line)' }}>
+        <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Vincular pessoa</div>
         <div style={{ fontSize:12, color:'var(--muted)', marginBottom:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.ev.summary}</div>
-        <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Nome do lead</label>
-        <input value={s.lead_nome} onChange={e => onChange({ lead_nome: e.target.value })} placeholder="Ex: João Silva"
-          style={{ width:'100%', marginTop:6, marginBottom:14, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, boxSizing:'border-box' }} />
+        <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Pessoa</label>
+        <select value={s.lead_id} onChange={e => onChange({ lead_id: e.target.value })}
+          style={{ width:'100%', marginTop:6, marginBottom:14, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, boxSizing:'border-box' }}>
+          <option value="">— Nenhuma —</option>
+          {pessoas.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.nome}{p.fase === 'cliente' ? ' (cliente)' : ' (lead)'}
+            </option>
+          ))}
+        </select>
+        {pessoas.length === 0 && (
+          <div style={{ fontSize:11.5, color:'var(--muted)', marginTop:-8, marginBottom:14 }}>
+            Nenhuma pessoa cadastrada. Adicione em Contatos ou Clientes primeiro.
+          </div>
+        )}
         <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Notas</label>
         <textarea value={s.lead_notas} onChange={e => onChange({ lead_notas: e.target.value })} rows={3} placeholder="Contexto, objetivo, próximos passos..."
           style={{ width:'100%', marginTop:6, marginBottom:20, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, resize:'vertical', boxSizing:'border-box', fontFamily:'inherit' }} />
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-          {s.lead_nome && <button onClick={() => onChange({ lead_nome:'', lead_notas:'' })} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--line)', background:'transparent', color:'var(--muted)', cursor:'pointer', fontSize:13 }}>Remover</button>}
+          {s.lead_id && <button onClick={() => onChange({ lead_id:'', lead_notas:'' })} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--line)', background:'transparent', color:'var(--muted)', cursor:'pointer', fontSize:13 }}>Remover</button>}
           <button onClick={onClose} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--line)', background:'transparent', color:'var(--text)', cursor:'pointer', fontSize:13 }}>Cancelar</button>
           <button onClick={onSave} disabled={s.saving} style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:s.saving?'not-allowed':'pointer', fontSize:13, fontWeight:700, opacity:s.saving?.7:1 }}>
             {s.saving ? 'Salvando...' : 'Salvar'}
@@ -56,13 +76,66 @@ function LinkModal({ s, onChange, onSave, onClose }: { s: LinkState; onChange: (
   );
 }
 
+// ─── RelatorioState + Modal ───────────────────────────────────
+
+interface RelatorioState {
+  ev: CalendarEventDB & { _consultor?: string };
+  tipo: TipoReuniao;
+  transcricao: string;
+  relatorio: string;
+  gerando: boolean;
+}
+
+function RelatorioModal({ s, onChange, onGerar, onClose }: { s: RelatorioState; onChange: (p: Partial<RelatorioState>) => void; onGerar: () => void; onClose: () => void }) {
+  const semVinculo = !s.ev.lead_id;
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:14, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,.3)', border:'1px solid var(--line)' }}>
+        <div style={{ fontSize:16, fontWeight:700, marginBottom:4, color:'var(--text)' }}>Gerar relatório</div>
+        <div style={{ fontSize:12, color:'var(--muted)', marginBottom:18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.ev.summary}</div>
+
+        {semVinculo && (
+          <div style={{ padding:'10px 12px', borderRadius:8, background:'rgba(245,158,11,.1)', border:'1px solid rgba(245,158,11,.3)', color:'#F59E0B', fontSize:12.5, marginBottom:16 }}>
+            Vincule uma pessoa a este evento antes de gerar o relatório.
+          </div>
+        )}
+
+        <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Tipo de reunião</label>
+        <select value={s.tipo} onChange={e => onChange({ tipo: e.target.value as TipoReuniao })}
+          style={{ width:'100%', marginTop:6, marginBottom:14, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, boxSizing:'border-box' }}>
+          {TIPOS_REUNIAO.map(t => <option key={t} value={t}>{TIPO_REUNIAO_LABEL[t]}</option>)}
+        </select>
+
+        <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Transcrição da reunião</label>
+        <textarea value={s.transcricao} onChange={e => onChange({ transcricao: e.target.value })} rows={8} placeholder="Cole aqui a transcrição gerada pelo Notion AI Meeting Notes..."
+          style={{ width:'100%', marginTop:6, marginBottom:14, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, resize:'vertical', boxSizing:'border-box', fontFamily:'inherit' }} />
+
+        {s.relatorio && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Relatório gerado</label>
+            <textarea value={s.relatorio} onChange={e => onChange({ relatorio: e.target.value })} rows={14}
+              style={{ width:'100%', marginTop:6, padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:12.5, resize:'vertical', boxSizing:'border-box', fontFamily:'monospace', lineHeight:1.5 }} />
+          </div>
+        )}
+
+        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+          <button onClick={onClose} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--line)', background:'transparent', color:'var(--text)', cursor:'pointer', fontSize:13 }}>Fechar</button>
+          <button onClick={onGerar} disabled={s.gerando || semVinculo} style={{ padding:'8px 18px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:(s.gerando||semVinculo)?'not-allowed':'pointer', fontSize:13, fontWeight:700, opacity:(s.gerando||semVinculo)?.6:1 }}>
+            {s.gerando ? 'Gerando...' : (s.relatorio ? 'Regerar' : 'Gerar relatório')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── EventCard ────────────────────────────────────────────────────────────────
 
-function EventCard({ ev, showConsultor, onLink }: { ev: CalendarEventDB & { _consultor?: string }; showConsultor: boolean; onLink: () => void }) {
+function EventCard({ ev, showConsultor, onLink, onRelatorio }: { ev: CalendarEventDB & { _consultor?: string }; showConsultor: boolean; onLink: () => void; onRelatorio: () => void }) {
   const guests = (ev.attendees || []).filter((a: {self?: boolean; email?: string}) => !a.self && a.email);
-  const hasLead = !!ev.lead_nome;
+  const hasLead = !!ev.lead_id;
   return (
-    <div style={{ padding:'10px 13px', borderRadius:10, background:'var(--bg)', border:`1px solid ${hasLead ? 'rgba(99,102,241,.3)' : 'var(--line)'}`, display:'flex', flexDirection:'column', gap:5 }}>
+    <div style={{ padding:'10px 13px', borderRadius:10, background:'var(--bg-card)', border:`1px solid ${hasLead ? 'rgba(99,102,241,.3)' : 'var(--line)'}`, display:'flex', flexDirection:'column', gap:5 }}>
       <div style={{ display:'flex', gap:10 }}>
         <div style={{ minWidth:68, fontSize:11, color:'var(--muted)', lineHeight:1.8, fontVariantNumeric:'tabular-nums' }}>
           {ev.is_all_day ? 'Dia todo' : `${fmtTime(ev.start_at)}–${fmtTime(ev.end_at)}`}
@@ -92,11 +165,15 @@ function EventCard({ ev, showConsultor, onLink }: { ev: CalendarEventDB & { _con
               <button onClick={onLink} style={{ fontSize:10, padding:'2px 7px', borderRadius:5, border:'1px solid rgba(99,102,241,.3)', background:'transparent', color:'#818cf8', cursor:'pointer', flexShrink:0 }}>Editar</button>
             </div>
           ) : (
-            <button onClick={onLink} style={{ marginTop:5, padding:'3px 9px', borderRadius:6, border:'1px dashed var(--line)', background:'transparent', color:'var(--muted)', cursor:'pointer', fontSize:11 }}>+ Vincular lead</button>
+            <button onClick={onLink} style={{ marginTop:5, padding:'3px 9px', borderRadius:6, border:'1px dashed var(--line)', background:'transparent', color:'var(--muted)', cursor:'pointer', fontSize:11 }}>+ Vincular pessoa</button>
           )}
-          {/* Botões futuros */}
+          {/* Botões de ação */}
           <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:6 }}>
-            {[['📋','Briefing',ev.briefing_gerado],['🎙️','Transcrição',!!ev.transcricao_url],['📄','Relatório',ev.relatorio_gerado],['✉️','Follow-up',ev.followup_gerado]].map(([icon, label, done]) => (
+            <button onClick={onRelatorio} title={ev.relatorio_gerado ? 'Ver/editar relatório' : 'Gerar relatório'}
+              style={{ padding:'3px 8px', borderRadius:5, border:`1px solid ${ev.relatorio_gerado ? 'rgba(34,197,94,.4)' : 'var(--line)'}`, background:ev.relatorio_gerado ? 'rgba(34,197,94,.08)' : 'var(--bg-soft)', color:ev.relatorio_gerado ? '#22c55e' : 'var(--text)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
+              📄 {ev.relatorio_gerado ? 'Relatório ✓' : 'Relatório'}
+            </button>
+            {[['📋','Briefing',ev.briefing_gerado],['✉️','Follow-up',ev.followup_gerado]].map(([icon, label, done]) => (
               <button key={String(label)} disabled title={`${label} (em breve)`}
                 style={{ padding:'3px 8px', borderRadius:5, border:`1px solid ${done ? 'rgba(34,197,94,.4)' : 'var(--line)'}`, background:done ? 'rgba(34,197,94,.08)' : 'var(--bg-soft)', color:done ? '#22c55e' : 'var(--muted)', fontSize:10, fontWeight:600, cursor:'not-allowed', opacity:done ? 1 : .5 }}>
                 {String(icon)} {String(label)}
@@ -113,10 +190,12 @@ function EventCard({ ev, showConsultor, onLink }: { ev: CalendarEventDB & { _con
 
 function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consultor: string; onToast: (m: string, e?: boolean) => void }) {
   const [events, setEvents] = useState<(CalendarEventDB & { _consultor?: string })[]>([]);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string|null>(null);
   const [modal, setModal] = useState<LinkState|null>(null);
+  const [relModal, setRelModal] = useState<RelatorioState|null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,7 +210,15 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
     } finally { setLoading(false); }
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadPessoas = useCallback(async () => {
+    const { data } = await supabase
+      .from('pessoas')
+      .select('*')
+      .order('nome', { ascending: true });
+    setPessoas((data as Pessoa[]) || []);
+  }, []);
+
+  useEffect(() => { load(); loadPessoas(); }, [load, loadPessoas]);
 
   const sync = async () => {
     setSyncing(true);
@@ -147,15 +234,36 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
   const saveLink = async () => {
     if (!modal) return;
     setModal(p => p ? { ...p, saving:true } : null);
+    const pessoa = pessoas.find(p => p.id === modal.lead_id);
+    const lead_nome = pessoa ? pessoa.nome : null;
+    const lead_id = modal.lead_id || null;
     try {
-      const r = await fetch('/api/calendar/events', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: modal.ev.id, userId: modal.userId, lead_nome: modal.lead_nome||null, lead_notas: modal.lead_notas||null }) });
+      const r = await fetch('/api/calendar/events', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: modal.ev.id, userId: modal.userId, lead_id, lead_nome, lead_notas: modal.lead_notas||null }) });
       const j = await r.json();
       if (j.ok) {
         onToast('✓ Vínculo salvo');
-        setEvents(prev => prev.map(e => e.id === modal.ev.id ? { ...e, lead_nome: modal.lead_nome||null, lead_notas: modal.lead_notas||null } : e));
+        setEvents(prev => prev.map(e => e.id === modal.ev.id ? { ...e, lead_id, lead_nome, lead_notas: modal.lead_notas||null } : e));
         setModal(null);
       } else { onToast(j.error||'Erro', true); setModal(p => p ? { ...p, saving:false } : null); }
     } catch { onToast('Falha', true); setModal(p => p ? { ...p, saving:false } : null); }
+  };
+
+  const gerarRelatorio = async () => {
+    if (!relModal) return;
+    if (relModal.transcricao.trim().length < 50) { onToast('Cole a transcrição completa', true); return; }
+    setRelModal(p => p ? { ...p, gerando:true } : null);
+    try {
+      const r = await fetch('/api/relatorio', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: relModal.ev.id, tipo: relModal.tipo, transcricao: relModal.transcricao }) });
+      const j = await r.json();
+      if (j.ok) {
+        onToast('✓ Relatório gerado');
+        setRelModal(p => p ? { ...p, relatorio: j.relatorio, gerando:false } : null);
+        setEvents(prev => prev.map(e => e.id === relModal.ev.id ? { ...e, relatorio_gerado: true } : e));
+      } else {
+        onToast(j.message || j.error || 'Erro ao gerar', true);
+        setRelModal(p => p ? { ...p, gerando:false } : null);
+      }
+    } catch { onToast('Falha na conexão', true); setRelModal(p => p ? { ...p, gerando:false } : null); }
   };
 
   const byDay = groupByDay(events);
@@ -193,13 +301,15 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {byDay.get(d)!.map(ev => (
               <EventCard key={ev.id} ev={ev} showConsultor={false}
-                onLink={() => setModal({ ev, userId, lead_nome: ev.lead_nome||'', lead_notas: ev.lead_notas||'', saving:false })} />
+                onLink={() => setModal({ ev, userId, lead_id: ev.lead_id||'', lead_notas: ev.lead_notas||'', saving:false })}
+                onRelatorio={() => setRelModal({ ev, tipo: (ev.tipo_reuniao as TipoReuniao) || 'analise', transcricao: ev.transcricao || '', relatorio: ev.relatorio || '', gerando:false })} />
             ))}
           </div>
         </div>
       ))}
 
-      {modal && <LinkModal s={modal} onChange={p => setModal(prev => prev ? {...prev,...p} : null)} onSave={saveLink} onClose={() => setModal(null)} />}
+      {modal && <LinkModal s={modal} pessoas={pessoas} onChange={p => setModal(prev => prev ? {...prev,...p} : null)} onSave={saveLink} onClose={() => setModal(null)} />}
+      {relModal && <RelatorioModal s={relModal} onChange={p => setRelModal(prev => prev ? {...prev,...p} : null)} onGerar={gerarRelatorio} onClose={() => setRelModal(null)} />}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -249,7 +359,7 @@ export default function Agenda({ filtroConsultor }: Props) {
       <div>
         <div className="sec-eyebrow"><span className="eyebrow-dot"></span><span>Google Calendar · read-only</span></div>
         <h1 className="sec-title">{filtroConsultor ? `Agenda de ${filtroConsultor}` : 'Agenda da equipe'}</h1>
-        <div className="sec-sub">Sincronize e visualize os próximos 30 dias. Vincule eventos a leads.</div>
+        <div className="sec-sub">Sincronize e visualize os próximos 30 dias. Vincule eventos a pessoas.</div>
       </div>
 
       {/* Seletor de consultor */}

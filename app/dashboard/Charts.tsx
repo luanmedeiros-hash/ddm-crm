@@ -11,9 +11,10 @@ Chart.register(...registerables);
 interface Props {
   filtered: RegInterno[];
   range: string[];
+  consultores: string[];
 }
 
-export default function Charts({ filtered, range }: Props) {
+export default function Charts({ filtered, range, consultores }: Props) {
   const ref1 = useRef<HTMLCanvasElement>(null);
   const ref2 = useRef<HTMLCanvasElement>(null);
   const ref3 = useRef<HTMLCanvasElement>(null);
@@ -37,7 +38,7 @@ export default function Charts({ filtered, range }: Props) {
     };
 
     // Chart 1: índice por consultor
-    const indices = CONSULTORES.map(c => ({ nome: c, ind: calcIndice(filtered.filter(r => r.consultor === c)).indice })).sort((a, b) => b.ind - a.ind);
+    const indices = consultores.map(c => ({ nome: c, ind: calcIndice(filtered.filter(r => r.consultor === c)).indice })).sort((a, b) => b.ind - a.ind);
     if (ref1.current) {
       charts.current.c1 = new Chart(ref1.current, {
         type: 'bar',

@@ -100,15 +100,10 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ========== 4. Promover líderes ==========
--- Matheus Baldini substitui Igor Floriano como líder.
+-- Matheus Baldini é a líder da equipe Baldada.
 UPDATE public.profiles
 SET role = 'lider'
-WHERE email IN ('matheus.baldini@w1partner.com.br', 'luanmedeiros.w1@gmail.com');
-
--- Garante que Igor (líder antigo) volta a ser liderado, caso já exista no banco.
-UPDATE public.profiles
-SET role = 'liderado'
-WHERE email = 'igorfloriano.w1@gmail.com';
+WHERE email = 'matheus.baldini@w1partner.com.br';
 
 -- ========== 5. Resultado ==========
 SELECT

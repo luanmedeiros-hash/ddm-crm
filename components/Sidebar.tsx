@@ -3,7 +3,7 @@
 import React from 'react';
 import Icon from './Icon';
 import Avatar from '@/app/dashboard/components/Avatar';
-import { CONSULTORES, isNovo } from '@/lib/constants';
+import { isNovo } from '@/lib/constants';
 import { FEATURES } from '@/lib/features';
 import type { Status } from '@/lib/types';
 
@@ -22,33 +22,36 @@ interface Props {
   onTabChange: (tab: string) => void;
   onConsultorClick: (nome: string) => void;
   onClearConsultor?: () => void;
+  isLider?: boolean;
 }
 
-const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES }[] = [
-  { key: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { key: 'conversao', icon: 'funnel', label: 'Conversão' },
-  { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR' },
+const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean }[] = [
+  { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', liderado: true },
+  { key: 'conversao', icon: 'funnel', label: 'Conversão', liderado: true },
+  { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
+  { key: 'clientes', icon: 'star', label: 'Clientes', liderado: true },
+  { key: 'contatos', icon: 'mail', label: 'Contatos', liderado: true },
   { key: 'alertas', icon: 'alert', label: 'Alertas' },
   { key: 'bloqueios', icon: 'block', label: 'Bloqueios' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
-  { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' } },
+  { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
   { key: 'bigpoints', icon: 'star', label: 'Big Points' },
   { key: 'simulador', icon: 'sim', label: 'Simulador' },
   { key: 'perfil', icon: 'user', label: 'Perfil DISC', badge: { txt: '🔒 Líder', cls: '' } },
 ];
 
-const NAV_ITEMS = ALL_NAV_ITEMS.filter(n => !n.flag || FEATURES[n.flag]);
-
-export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor }: Props) {
+export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false }: Props) {
   const algumSelecionado = !!filtroConsultor;
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter(n => (!n.flag || FEATURES[n.flag]) && (isLider || n.liderado));
 
   return (
     <aside className="sidebar">
       <div className="brand-card">
-        <div className="brand-logo">🪣</div>
+        <div className="brand-logo" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, lineHeight: 1 }}>🪣</div>
         <div className="brand-text">CRM Baldada</div>
       </div>
 
+      {isLider && (
       <div className="toggle-group">
         <button
           className={`toggle-pill ${activeTab !== 'modo-daily' ? 'active' : ''}`}
@@ -63,6 +66,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
           Modo Daily
         </button>
       </div>
+      )}
 
       <div className="nav-section-label">Menu</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -79,6 +83,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
         ))}
       </div>
 
+      {isLider && (<>
       <div className="nav-group-header">
         <span>Consultores</span>
         <span className="nav-badge count">{ativosCount}</span>
@@ -124,6 +129,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
           );
         })}
       </div>
+      </>)}
     </aside>
   );
 }

@@ -1,34 +1,34 @@
-/* CRM Baldada — Tema slate-900 */
+/* CRM Baldada — Tema azul & âmbar */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 /* ========================================================
      PALETA — slate-900 (#0f172a) com base bege Donezo
      ======================================================== */
   :root{
-    --bg-page: #f6f6f1;          /* bege-claro mais quente */
+    --bg-page: #fbf9f4;          /* bege-claro mais quente */
     --bg-card: #ffffff;
-    --bg-soft: #f4f5f0;
-    --bg-muted: #ebece7;
-    --line: #e5e7e0;
-    --line-2: #cfd1c8;
+    --bg-soft: #f7f3ea;
+    --bg-muted: #f0ead9;
+    --line: #ece6d5;
+    --line-2: #d9cfb0;
 
     /* Slate-900 (cor primária) */
-    --primary: #0f172a;
-    --primary-soft: #1e293b;     /* slate-800 */
-    --primary-bright: #334155;   /* slate-700 */
-    --primary-100: #f1f3f8;      /* fundo bem clarinho */
-    --primary-200: #d8dde6;
+    --primary: #4a90c8;
+    --primary-soft: #9a1010;     /* slate-800 */
+    --primary-bright: #5c0000;   /* slate-700 */
+    --primary-100: #fbeaea;      /* fundo bem clarinho */
+    --primary-200: #f0c8c8;
 
-    --text: #0f172a;
-    --text-dim: #475569;
-    --muted: #64748b;
-    --muted-2: #94a3b8;
+    --text: #2a1a1a;
+    --text-dim: #6b5050;
+    --muted: #8a7575;
+    --muted-2: #b39a9a;
 
     --ok: #16a34a;
     --warn: #d97706;
     --crit: #dc2626;
     --info: #2563eb;
-    --gold: #b78a30;
+    --gold: #F59E0B;
 
     --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04), 0 1px 1px rgba(15, 23, 42, .03);
     --shadow-md: 0 4px 14px rgba(15, 23, 42, .06), 0 2px 4px rgba(15, 23, 42, .04);
@@ -971,7 +971,7 @@
 
   /* Coluna esquerda: lista de consultores */
   .daily-list {
-    background: rgba(0,0,0,.25);
+    background: var(--bg-soft);
     border-right: 1px solid var(--line);
     padding: 22px 16px;
     display: flex; flex-direction: column; gap: 4px;
@@ -979,7 +979,7 @@
     overflow-y: auto;
   }
   .daily-list::-webkit-scrollbar { width: 5px; }
-  .daily-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+  .daily-list::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 2px; }
 
   .daily-list-header {
     padding: 4px 10px 12px;
@@ -993,13 +993,12 @@
   .daily-list-title { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
   .daily-list-progress {
     margin-top: 12px;
-    height: 4px; background: rgba(255,255,255,.05);
+    height: 4px; background: var(--bg-muted);
     border-radius: 99px; overflow: hidden;
   }
   .daily-list-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-soft) 100%);
-    box-shadow: 0 0 12px var(--accent-glow);
+    background: var(--primary);
     transition: width .3s ease;
   }
   .daily-list-counter {
@@ -1015,7 +1014,7 @@
     border: 1px solid transparent;
     position: relative;
   }
-  .daily-list-item:hover { background: rgba(255,255,255,.04); }
+  .daily-list-item:hover { background: var(--bg-soft); }
   .daily-list-item.active {
     background: var(--bg-soft);
     border-color: var(--line-2);
@@ -1023,8 +1022,7 @@
   .daily-list-item.active::before {
     content: "";
     position: absolute; left: -16px; top: 50%; transform: translateY(-50%);
-    width: 3px; height: 24px; background: var(--accent); border-radius: 0 3px 3px 0;
-    box-shadow: 0 0 8px var(--accent-glow);
+    width: 3px; height: 24px; background: var(--primary); border-radius: 0 3px 3px 0;
   }
   .daily-list-item.visited { opacity: .55; }
   .daily-list-item.visited:hover { opacity: .85; }
@@ -1038,7 +1036,7 @@
   .daily-list-item-avatar.crit { background: rgba(248,113,113,.2); color: var(--crit); }
   .daily-list-item-avatar.warn { background: rgba(251,191,36,.18); color: var(--warn); }
   .daily-list-item-avatar.normal { background: rgba(74,222,128,.18); color: var(--ok); }
-  .daily-list-item-avatar.empty { background: rgba(255,255,255,.05); color: var(--muted-2); }
+  .daily-list-item-avatar.empty { background: var(--bg-muted); color: var(--muted-2); }
   .daily-list-item-content { flex: 1; min-width: 0; }
   .daily-list-item-name {
     font-size: 13px; font-weight: 600; color: var(--text);
@@ -1056,7 +1054,7 @@
   .daily-list-item-status-dot.normal { background: var(--ok); }
   .daily-list-item-status-dot.empty { background: var(--muted-2); }
   .daily-list-item-check {
-    color: var(--accent); font-size: 13px; font-weight: 700;
+    color: var(--primary); font-size: 13px; font-weight: 700;
   }
 
   /* Coluna direita: detalhe do consultor */
@@ -1066,7 +1064,7 @@
     max-height: 88vh;
   }
   .daily-detail::-webkit-scrollbar { width: 5px; }
-  .daily-detail::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 2px; }
+  .daily-detail::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 2px; }
 
   .daily-detail-header {
     display: flex; justify-content: space-between; align-items: flex-start;
@@ -1085,7 +1083,7 @@
   .daily-detail-actions { display: flex; gap: 6px; }
   .daily-detail-actions button {
     width: 36px; height: 36px;
-    background: rgba(255,255,255,.04);
+    background: var(--bg-card);
     border: 1px solid var(--line);
     border-radius: 10px;
     color: var(--text-dim);
@@ -1103,7 +1101,7 @@
     margin-bottom: 24px;
   }
   .daily-stat {
-    background: rgba(255,255,255,.03);
+    background: var(--bg-card);
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 14px 16px;
@@ -1126,14 +1124,14 @@
   }
 
   .daily-prio-block {
-    background: linear-gradient(135deg, rgba(96, 165, 250, .12) 0%, rgba(96, 165, 250, .02) 100%);
-    border: 1px solid rgba(96, 165, 250, .25);
+    background: var(--primary-100);
+    border: 1px solid var(--primary-200);
     border-radius: 14px;
     padding: 18px 20px;
     margin-top: 16px;
   }
   .daily-prio-eyebrow {
-    font-size: 10.5px; font-weight: 700; color: var(--accent);
+    font-size: 10.5px; font-weight: 700; color: var(--primary);
     text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px;
     display: flex; align-items: center; gap: 6px;
   }
@@ -1365,8 +1363,10 @@
     max-width: 1100px;
     min-height: 200px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 24px;
   }
 
   .login-cta-v3 {
@@ -1579,3 +1579,177 @@
     .agenda-day-label { padding-top: 0; }
     .agenda-event { grid-template-columns: 1fr; gap: 4px; }
   }
+
+/* ========================================================
+   LOGIN — Split panel (shader esquerda + form direita)
+   ======================================================== */
+.login-split {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #fbf9f4;
+}
+
+.login-split-visual {
+  position: relative;
+  overflow: hidden;
+  background: #1a0505;
+  color: #faf0d4;
+  display: flex;
+}
+
+.login-split-visual-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px;
+}
+
+.login-split-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: #faf0d4;
+}
+
+.login-split-tagline h1 {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 500;
+  line-height: 1.15;
+  margin: 0 0 16px;
+  color: #faf0d4;
+  max-width: 380px;
+}
+
+.login-split-tagline p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #c9a878;
+  max-width: 380px;
+  margin: 0;
+}
+
+.login-split-footer {
+  font-size: 11px;
+  color: #8a5a1f;
+  letter-spacing: 0.3px;
+}
+
+.login-split-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #fbf9f4;
+}
+
+.login-split-form-inner {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.login-split-form-header h2 {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 6px;
+  color: #2e0707;
+}
+
+.login-split-form-header p {
+  font-size: 13px;
+  color: #8a5a1f;
+  margin: 0;
+}
+
+.login-split-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 16px;
+  background: #fff;
+  border: 1px solid rgba(196, 138, 20, 0.35);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+
+.login-split-google-btn:hover:not(:disabled) {
+  border-color: #c48a14;
+  background: #fffbf3;
+}
+
+.login-split-google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-split-error {
+  padding: 10px 12px;
+  background: rgba(120, 0, 0, 0.08);
+  border: 1px solid rgba(120, 0, 0, 0.2);
+  border-radius: 8px;
+  color: #4a90c8;
+  font-size: 12.5px;
+}
+
+.login-split-disclaimer {
+  font-size: 11px;
+  color: #8a5a1f;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Responsivo: empilhar em telas estreitas */
+@media (max-width: 768px) {
+  .login-split {
+    grid-template-columns: 1fr;
+  }
+  .login-split-visual {
+    min-height: 280px;
+  }
+  .login-split-visual-content {
+    padding: 28px;
+  }
+  .login-split-form {
+    padding: 28px;
+  }
+}
+
+/* ========================================================
+   LOGIN — Ajustes lado direito (logo, divider, alinhamento)
+   ======================================================== */
+.login-split-form-inner {
+  align-items: center;
+  text-align: center;
+}
+
+.login-split-logo {
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+.login-split-form-header {
+  text-align: center;
+}
+
+.login-split-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(138, 90, 31, 0.2);
+  margin: 4px 0;
+}

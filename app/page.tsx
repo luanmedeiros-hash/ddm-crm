@@ -1,22 +1,23 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase-server';
 
-// Mapa email → nome do consultor (sempre lowercase)
+// Mapa email -> nome do consultor (sempre lowercase)
 const EMAIL_TO_CONSULTOR: Record<string, string> = {
   'brunobacco.w1@gmail.com':         'Bacco',
-  'bruno.bottoni.w1@gmail.com':      'Bottoni',
   'danilocastanhari.w1@gmail.com':   'Danilo',
   'davigali.w1@gmail.com':           'Davi',
   'matheusduarte.w1@gmail.com':      'Duarte',
   'erichenrique.w1@gmail.com':       'Eric',
   'matheus.faria.99.w1@gmail.com':   'Faria',
   'juliodeoliveira.w1@gmail.com':    'Júlio',
+  'marcelomachado.w1@gmail.com':     'Marcelo',
   'melwierzba.w1@gmail.com':         'Mel',
   'jpedrodias.w1@gmail.com':         'Pedro',
   'pauloferraz.w1@gmail.com':        'PH',
   'rafael.garbelini.w1@gmail.com':   'Rafael',
   'matheussalgado.w1@gmail.com':     'Salgado',
   'shojikato.w1@gmail.com':          'Shoji',
+  'mateusmzonaro.w1@gmail.com':      'Zonaro',
 };
 
 const LIDERES = new Set([
@@ -32,14 +33,12 @@ export default async function HomePage() {
 
   const email = (user.email || '').toLowerCase();
 
-  // Verifica se já existe profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .single();
 
-  // Se não tem profile, cria automaticamente (primeiro login Google)
   if (!profile) {
     const isLider = LIDERES.has(email);
     const consultorNome = EMAIL_TO_CONSULTOR[email] || null;
