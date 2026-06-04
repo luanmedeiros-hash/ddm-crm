@@ -2,17 +2,18 @@
 // Prompts de geração de relatório a partir de transcrição de reunião.
 // Cada tipo de reunião tem seu próprio formato de relatório.
 
-export type TipoReuniao = 'analise' | 'c1' | 'c2' | 'c3' | 'c4';
+export type TipoReuniao = 'analise' | 'c1' | 'c2' | 'c3' | 'c4' | 'acompanhamento';
 
 export const TIPO_REUNIAO_LABEL: Record<TipoReuniao, string> = {
-  analise: 'Análise (1ª reunião)',
-  c1: 'C1 — Organização Financeira',
-  c2: 'C2 — Proteção Financeira',
-  c3: 'C3 — Acúmulo de Capital',
-  c4: 'C4 — Expansão Patrimonial',
+  analise:        'Análise (1ª reunião)',
+  c1:             'C1 — Organização Financeira',
+  c2:             'C2 — Proteção Financeira',
+  c3:             'C3 — Acúmulo de Capital',
+  c4:             'C4 — Expansão Patrimonial',
+  acompanhamento: 'Acompanhamento',
 };
 
-export const TIPOS_REUNIAO: TipoReuniao[] = ['analise', 'c1', 'c2', 'c3', 'c4'];
+export const TIPOS_REUNIAO: TipoReuniao[] = ['analise', 'c1', 'c2', 'c3', 'c4', 'acompanhamento'];
 
 const PROMPT_ANALISE = `Você é um assistente especializado em planejamento financeiro pessoal.
 Abaixo está a transcrição de uma reunião de Análise — primeira reunião com um novo contato.
@@ -322,12 +323,41 @@ falta de estrutura jurídica, riscos identificados]
 - Próxima reunião: Revisão geral do planejamento
 - Data sugerida: [___]`;
 
+const PROMPT_ACOMPANHAMENTO = `Você é um assistente especializado em planejamento financeiro pessoal.
+Abaixo está a transcrição de uma reunião de Acompanhamento — reunião periódica com cliente ativo.
+Gere um resumo estruturado da reunião.
+
+RELATÓRIO — ACOMPANHAMENTO
+Cliente: [extrair do contexto]
+Data: [extrair da transcrição ou hoje]
+Consultor: [extrair da transcrição]
+
+1. SITUAÇÃO ATUAL DO CLIENTE
+[Resumo da situação financeira atual]
+
+2. PRODUTOS / PLANOS EM ANDAMENTO
+[Produtos ativos e status de cada um]
+
+3. PRINCIPAIS PONTOS DISCUTIDOS
+[Tópicos mais relevantes da reunião]
+
+4. SATISFAÇÃO E FEEDBACKS
+[O que o cliente expressou sobre os produtos e atendimento]
+
+5. PRÓXIMAS AÇÕES
+[O que ficou acordado para os próximos dias]
+
+6. OBSERVAÇÕES
+[Qualquer ponto adicional relevante]
+`;
+
 const PROMPTS: Record<TipoReuniao, string> = {
-  analise: PROMPT_ANALISE,
-  c1: PROMPT_C1,
-  c2: PROMPT_C2,
-  c3: PROMPT_C3,
-  c4: PROMPT_C4,
+  analise:        PROMPT_ANALISE,
+  c1:             PROMPT_C1,
+  c2:             PROMPT_C2,
+  c3:             PROMPT_C3,
+  c4:             PROMPT_C4,
+  acompanhamento: PROMPT_ACOMPANHAMENTO,
 };
 
 /**

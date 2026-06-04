@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Pessoa, ClienteStatus } from '@/lib/types';
 import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, type TipoReuniao } from '@/lib/prompts-relatorio';
+import JornadaCliente from './JornadaCliente';
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface ReuniaoRow {
@@ -113,6 +114,12 @@ export default function PerfilCliente({
 
         {/* Conteúdo */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          {/* Jornada sempre visível no topo */}
+          <JornadaCliente
+            pessoaId={cliente.id}
+            dataFechamento={(cliente as Pessoa & { data_fechamento?: string }).data_fechamento || cliente.data_inicio || null}
+          />
+
           {aba === 'info'       && <AbaInfo cliente={cliente} onSaved={onSaved} />}
           {aba === 'atividades' && <AbaAtividades pessoaId={cliente.id} />}
           {aba === 'reunioes'   && <AbaReunioes pessoaId={cliente.id} userId={cliente.user_id} />}
@@ -153,6 +160,7 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
     origem: cliente.origem || '',
     notas: cliente.notas || '',
     data_inicio: cliente.data_inicio || '',
+    data_fechamento: (cliente as Pessoa & { data_fechamento?: string }).data_fechamento || '',
     c1: cliente.c1,
     c2: cliente.c2,
     c3: cliente.c3,
@@ -182,6 +190,7 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         origem: form.origem || null,
         notas: form.notas || null,
         data_inicio: form.data_inicio || null,
+        data_fechamento: (form as typeof form & { data_fechamento?: string }).data_fechamento || null,
         c1: form.c1, c2: form.c2, c3: form.c3, c4: form.c4,
         patrimonio: parseMoeda(form.patrimonio),
         renda_mensal: parseMoeda(form.renda_mensal),
@@ -230,6 +239,15 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           <input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} style={input} />
         </Field>
       </div>
+
+      <Field label="Data de fechamento (quando virou cliente)">
+        <input
+          type="date"
+          value={(form as typeof form & { data_fechamento?: string }).data_fechamento || ''}
+          onChange={e => setForm({ ...form, ...{ data_fechamento: e.target.value } })}
+          style={input}
+        />
+      </Field>
 
       <Field label="Notas">
         <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={4} style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Observações sobre o cliente..." />
