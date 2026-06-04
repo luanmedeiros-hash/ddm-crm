@@ -15,6 +15,9 @@ interface ReuniaoRow {
   transcricao: string | null;
   relatorio: string | null;
   relatorio_gerado_em: string | null;
+  contrato_gerado: boolean;
+  apolice_path: string | null;
+  apolice_nome: string | null;
   created_at: string;
 }
 
@@ -553,7 +556,7 @@ function AbaReunioes({ pessoaId, userId }: { pessoaId: string; userId: string })
     setLoading(true);
     const { data } = await supabase
       .from('reunioes')
-      .select('id, tipo, data_reuniao, transcricao, relatorio, relatorio_gerado_em, created_at')
+      .select('id, tipo, data_reuniao, transcricao, relatorio, relatorio_gerado_em, contrato_gerado, apolice_path, apolice_nome, created_at')
       .eq('pessoa_id', pessoaId)
       .order('data_reuniao', { ascending: false, nullsFirst: false });
     setReunioes((data as ReuniaoRow[]) || []);
@@ -603,6 +606,8 @@ function AbaReunioes({ pessoaId, userId }: { pessoaId: string; userId: string })
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={tipoChip}>{TIPO_REUNIAO_LABEL[r.tipo as TipoReuniao] || r.tipo}</span>
                   <span style={{ fontSize: 12.5, color: 'var(--text)', flex: 1 }}>{fmtData(r.data_reuniao)}</span>
+                  {r.contrato_gerado && <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✅ Contrato</span>}
+                  {r.apolice_nome && <span style={{ fontSize: 11, color: '#4a90c8', fontWeight: 600 }}>📎 Apólice</span>}
                   {r.relatorio && <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>📄 Relatório</span>}
                   {r.transcricao && !r.relatorio && <span style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600 }}>📝 Transcrição</span>}
                   <button onClick={() => setEditando(r)} style={btnIcon} title="Editar">✏️</button>
@@ -664,9 +669,17 @@ function FormReuniao({
   );
   const [transcricao, setTranscricao] = useState(reuniao?.transcricao || '');
   const [relatorio, setRelatorio] = useState(reuniao?.relatorio || '');
+  const [contratoGerado, setContratoGerado] = useState(reuniao?.contrato_gerado || false);
+  const [apoliceFile, setApoliceFile] = useState<File | null>(null);
+  const [apoliceNome, setApoliceNome] = useState(reuniao?.apolice_nome || '');
+  const [uploadandoApolice, setUploadandoApolice] = useState(false);
   const [saving, setSaving] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState('');
+  const apoliceInputRef = React.useRef<HTMLInputElement>(null);
+
+  const temProduto = ['c2', 'c3', 'c4'].includes(tipo);
+  const produtoLabel = PRODUTO_POR_REUNIAO[tipo as TipoReuniao];
 
   const gerarRelatorio = async () => {
     if (transcricao.trim().length < 50) { setErro('Cole a transcrição completa antes de gerar.'); return; }
@@ -697,11 +710,30 @@ function FormReuniao({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setErro('Sessão expirada.'); setSaving(false); return; }
 
+    // Upload da apólice se houver arquivo novo
+    let apolicePath = reuniao?.apolice_path || null;
+    let apoliceNomeFinal = reuniao?.apolice_nome || null;
+    if (apoliceFile) {
+      setUploadandoApolice(true);
+      const ext = apoliceFile.name.split('.').pop() || 'pdf';
+      const path = `${user.id}/${pessoaId}/apolice-${tipo}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('anexos')
+        .upload(path, apoliceFile, { contentType: apoliceFile.type, upsert: true });
+      if (upErr) { setErro('Erro ao enviar apólice: ' + upErr.message); setSaving(false); setUploadandoApolice(false); return; }
+      apolicePath = path;
+      apoliceNomeFinal = apoliceFile.name;
+      setUploadandoApolice(false);
+    }
+
     const payload = {
       tipo,
       data_reuniao: dataReuniao || null,
       transcricao: transcricao || null,
       relatorio: relatorio || null,
+      contrato_gerado: contratoGerado,
+      apolice_path: apolicePath,
+      apolice_nome: apoliceNomeFinal,
       updated_at: new Date().toISOString(),
     };
 
@@ -718,13 +750,12 @@ function FormReuniao({
 
     if (error) { setErro(error.message); setSaving(false); return; }
 
-    // Auto-marcar produto no perfil financeiro da pessoa
-    const produto = PRODUTO_POR_REUNIAO[tipo as TipoReuniao];
-    if (produto) {
+    // Marca produto no perfil financeiro SOMENTE se contrato foi gerado
+    if (contratoGerado && produtoLabel) {
       const { data: p } = await supabase.from('pessoas').select('produtos').eq('id', pessoaId).single();
       const atuais: string[] = (p as { produtos?: string[] })?.produtos || [];
-      if (!atuais.includes(produto)) {
-        await supabase.from('pessoas').update({ produtos: [...atuais, produto] }).eq('id', pessoaId);
+      if (!atuais.includes(produtoLabel)) {
+        await supabase.from('pessoas').update({ produtos: [...atuais, produtoLabel] }).eq('id', pessoaId);
       }
     }
 
@@ -781,11 +812,88 @@ function FormReuniao({
         </Field>
       )}
 
+      {/* Flag de contrato — só para C2, C3, C4 */}
+      {temProduto && (
+        <div style={{
+          margin: '4px 0 14px',
+          padding: '14px 16px',
+          borderRadius: 10,
+          background: contratoGerado ? 'rgba(34,197,94,.06)' : 'var(--bg-soft)',
+          border: `1px solid ${contratoGerado ? 'rgba(34,197,94,.3)' : 'var(--line)'}`,
+          transition: 'all .2s',
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={contratoGerado}
+              onChange={e => setContratoGerado(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary)' }}
+            />
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: contratoGerado ? '#16a34a' : 'var(--text)' }}>
+                {contratoGerado ? '✅ Contrato gerado' : '⬜ Gerou contrato?'}
+              </div>
+              {produtoLabel && (
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>
+                  Produto: {produtoLabel}
+                </div>
+              )}
+            </div>
+          </label>
+
+          {/* Upload de apólice */}
+          {contratoGerado && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
+                📎 Apólice / Documento
+              </div>
+              {apoliceNome && !apoliceFile && (
+                <div style={{ fontSize: 12.5, color: 'var(--primary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>📄</span> <span>{apoliceNome}</span>
+                  <button
+                    onClick={async () => {
+                      if (!reuniao?.apolice_path) return;
+                      const { data } = await supabase.storage.from('anexos').createSignedUrl(reuniao.apolice_path, 60);
+                      if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                    }}
+                    style={{ fontSize: 11, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Abrir
+                  </button>
+                </div>
+              )}
+              {apoliceFile && (
+                <div style={{ fontSize: 12.5, color: '#22c55e', marginBottom: 8 }}>
+                  📄 {apoliceFile.name} — {(apoliceFile.size / 1024).toFixed(0)} KB
+                </div>
+              )}
+              <button
+                onClick={() => apoliceInputRef.current?.click()}
+                disabled={uploadandoApolice}
+                style={{ ...btnGhost, fontSize: 12.5, padding: '6px 12px' }}
+              >
+                {uploadandoApolice ? 'Enviando...' : apoliceNome || apoliceFile ? '↺ Trocar arquivo' : '⬆ Anexar apólice'}
+              </button>
+              <input
+                ref={apoliceInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) { setApoliceFile(f); setApoliceNome(f.name); }
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {erro && <div style={errorBox}>{erro}</div>}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
         <button onClick={onCancel} style={btnGhost}>Cancelar</button>
-        <button onClick={salvar} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
+        <button onClick={salvar} disabled={saving || uploadandoApolice} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
           {saving ? 'Salvando...' : 'Salvar reunião'}
         </button>
       </div>
