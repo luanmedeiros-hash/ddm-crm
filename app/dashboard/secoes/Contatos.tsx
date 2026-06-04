@@ -164,11 +164,8 @@ export default function Contatos() {
     <div style={{ padding: '4px 2px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Contatos</div>
-          <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
-            {contatos.length} contato{contatos.length !== 1 ? 's' : ''} · leads para reuniões
-          </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+          {contatos.length} contato{contatos.length !== 1 ? 's' : ''} · leads para reuniões
         </div>
         <button onClick={abrirNovo} style={btnPrimary}>+ Adicionar contato</button>
       </div>

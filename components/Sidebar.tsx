@@ -34,7 +34,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'atencao', icon: 'alert', label: 'Atenção' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
-  { key: 'equipe', icon: 'user', label: 'Equipe', liderOnly: true },
+  { key: 'equipe', icon: 'team', label: 'Equipe', liderOnly: true },
 ];
 
 export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false }: Props) {

@@ -7,7 +7,7 @@ type IconName =
   | 'star' | 'sim' | 'chevronDown' | 'chevronUp' | 'chevronRight'
   | 'chevronLeft' | 'bell' | 'search' | 'settings' | 'arrowUpRight'
   | 'plus' | 'refresh' | 'filter' | 'trend' | 'close' | 'upload'
-  | 'mail' | 'add' | 'calendar';
+  | 'mail' | 'add' | 'calendar' | 'team';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   name: IconName;
@@ -80,6 +80,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   calendar: (<>
     <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
     <path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </>),
+  team: (<>
+    <circle cx="9" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+    <circle cx="17" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M21 20c0-2.8-1.8-5-4-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
   </>),
 };
 

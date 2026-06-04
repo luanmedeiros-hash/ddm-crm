@@ -78,11 +78,8 @@ export default function Equipe() {
     <div style={{ padding: '4px 2px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Equipe</div>
-          <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
-            {lideres.length} líder{lideres.length !== 1 ? 'es' : ''} · {consultores.length} consultor{consultores.length !== 1 ? 'es' : ''}
-          </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+          {lideres.length} líder{lideres.length !== 1 ? 'es' : ''} · {consultores.length} consultor{consultores.length !== 1 ? 'es' : ''}
         </div>
         {!form && (
           <button onClick={() => { setErro(''); setSucesso(''); setForm({ ...EMPTY_FORM }); }} style={btnPrimary}>

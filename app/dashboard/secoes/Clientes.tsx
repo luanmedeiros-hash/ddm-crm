@@ -58,11 +58,8 @@ export default function Clientes() {
     <div style={{ padding: '4px 2px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Clientes</div>
-          <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
-            {ativos} ativo{ativos !== 1 ? 's' : ''} · {inativos} inativo{inativos !== 1 ? 's' : ''}
-          </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
+          {ativos} ativo{ativos !== 1 ? 's' : ''} · {inativos} inativo{inativos !== 1 ? 's' : ''}
         </div>
         <button onClick={() => setModalNovo(true)} style={btnPrimary}>+ Adicionar cliente</button>
       </div>
