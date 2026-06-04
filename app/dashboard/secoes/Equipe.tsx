@@ -171,8 +171,34 @@ export default function Equipe() {
 
 // ─── Card de membro ───────────────────────────────────────────
 function CardMembro({ membro, onAtualizado }: { membro: MembroEquipe; onAtualizado: () => void }) {
+  const [editando, setEditando] = useState(false);
+  const [form, setForm] = useState({ nome: membro.nome, email: membro.email, role: membro.role });
+  const [saving, setSaving] = useState(false);
   const [reenviando, setReenviando] = useState(false);
   const [msg, setMsg] = useState('');
+  const [erro, setErro] = useState('');
+
+  const salvar = async () => {
+    if (!form.nome.trim()) { setErro('Nome é obrigatório.'); return; }
+    setSaving(true); setErro('');
+    const { supabase: sb } = await import('@/lib/supabase');
+    const { error } = await sb
+      .from('profiles')
+      .update({
+        nome: form.nome.trim(),
+        email: form.email.trim().toLowerCase(),
+        role: form.role,
+        consultor_nome: form.role === 'liderado' ? form.nome.trim() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', membro.id);
+    if (error) { setErro(error.message); setSaving(false); return; }
+    setMsg('✓ Salvo');
+    setTimeout(() => setMsg(''), 2500);
+    setEditando(false);
+    onAtualizado();
+    setSaving(false);
+  };
 
   const reenviarConvite = async () => {
     setReenviando(true); setMsg('');
@@ -189,6 +215,35 @@ function CardMembro({ membro, onAtualizado }: { membro: MembroEquipe; onAtualiza
     setReenviando(false);
   };
 
+  if (editando) {
+    return (
+      <div style={{ ...card, flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>Editar membro</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Field label="Nome *" flex>
+            <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} style={input} autoFocus />
+          </Field>
+          <Field label="Perfil" flex>
+            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as 'lider' | 'liderado' })} style={input}>
+              <option value="liderado">Consultor</option>
+              <option value="lider">Líder</option>
+            </select>
+          </Field>
+        </div>
+        <Field label="Email">
+          <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={input} type="email" />
+        </Field>
+        {erro && <div style={errorBox}>{erro}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={() => { setEditando(false); setErro(''); setForm({ nome: membro.nome, email: membro.email, role: membro.role }); }} style={btnGhost}>Cancelar</button>
+          <button onClick={salvar} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={card}>
       <div style={avatar}>{(membro.nome || '?')[0].toUpperCase()}</div>
@@ -203,13 +258,9 @@ function CardMembro({ membro, onAtualizado }: { membro: MembroEquipe; onAtualiza
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {msg && <span style={{ fontSize: 11, color: msg.startsWith('✓') ? '#22c55e' : '#ef4444' }}>{msg}</span>}
-        <button
-          onClick={reenviarConvite}
-          disabled={reenviando}
-          style={{ ...btnSmall, opacity: reenviando ? 0.6 : 1 }}
-          title="Reenviar convite por email"
-        >
-          {reenviando ? '...' : '📧 Reenviar'}
+        <button onClick={() => setEditando(true)} style={btnSmall} title="Editar">✏️ Editar</button>
+        <button onClick={reenviarConvite} disabled={reenviando} style={{ ...btnSmall, opacity: reenviando ? 0.6 : 1 }} title="Reenviar convite">
+          {reenviando ? '...' : '📧'}
         </button>
       </div>
     </div>
