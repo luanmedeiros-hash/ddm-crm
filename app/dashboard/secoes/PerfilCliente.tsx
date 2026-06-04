@@ -123,8 +123,27 @@ export default function PerfilCliente({
   );
 }
 
+const PRODUTOS_OPCOES = ['Previdência', 'Seguro de Vida', 'Seguro Patrimonial', 'Investimento', 'Consórcio', 'Câmbio', 'Crédito'];
+const PERFIL_RISCO_OPCOES = [
+  { value: 'conservador', label: '🛡️ Conservador' },
+  { value: 'moderado',    label: '⚖️ Moderado' },
+  { value: 'arrojado',    label: '📈 Arrojado' },
+  { value: 'agressivo',   label: '🚀 Agressivo' },
+];
+
+function fmtMoeda(v: number | null | undefined) {
+  if (!v) return '';
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+}
+
+function parseMoeda(s: string): number | null {
+  const n = parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
 // ─── Aba Info ─────────────────────────────────────────────────
 function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void }) {
+  const ext = cliente as Pessoa & { patrimonio?: number; renda_mensal?: number; perfil_risco?: string; produtos?: string[]; objetivo?: string };
   const [form, setForm] = useState({
     nome: cliente.nome,
     telefone: cliente.telefone || '',
@@ -138,6 +157,12 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
     c2: cliente.c2,
     c3: cliente.c3,
     c4: cliente.c4,
+    // Campos financeiros
+    patrimonio: ext.patrimonio ? String(ext.patrimonio) : '',
+    renda_mensal: ext.renda_mensal ? String(ext.renda_mensal) : '',
+    perfil_risco: ext.perfil_risco || '',
+    produtos: ext.produtos || [] as string[],
+    objetivo: ext.objetivo || '',
   });
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
@@ -158,6 +183,11 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         notas: form.notas || null,
         data_inicio: form.data_inicio || null,
         c1: form.c1, c2: form.c2, c3: form.c3, c4: form.c4,
+        patrimonio: parseMoeda(form.patrimonio),
+        renda_mensal: parseMoeda(form.renda_mensal),
+        perfil_risco: form.perfil_risco || null,
+        produtos: form.produtos,
+        objetivo: form.objetivo || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', cliente.id);
@@ -204,6 +234,88 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
       <Field label="Notas">
         <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={4} style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Observações sobre o cliente..." />
       </Field>
+
+      {/* ── Perfil financeiro ── */}
+      <div style={{ margin: '4px 0 14px', paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 12 }}>
+          💰 Perfil financeiro
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Field label="Patrimônio" flex>
+            <input
+              value={form.patrimonio}
+              onChange={e => setForm({ ...form, patrimonio: e.target.value })}
+              style={input}
+              placeholder="Ex: 500000"
+              type="number"
+              min="0"
+            />
+          </Field>
+          <Field label="Renda mensal" flex>
+            <input
+              value={form.renda_mensal}
+              onChange={e => setForm({ ...form, renda_mensal: e.target.value })}
+              style={input}
+              placeholder="Ex: 15000"
+              type="number"
+              min="0"
+            />
+          </Field>
+        </div>
+
+        <Field label="Perfil de risco">
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {PERFIL_RISCO_OPCOES.map(p => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setForm({ ...form, perfil_risco: form.perfil_risco === p.value ? '' : p.value })}
+                style={{
+                  padding: '6px 12px', borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${form.perfil_risco === p.value ? 'var(--primary)' : 'var(--line)'}`,
+                  background: form.perfil_risco === p.value ? 'rgba(74,144,200,.12)' : 'transparent',
+                  color: form.perfil_risco === p.value ? 'var(--primary)' : 'var(--muted)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Produtos contratados / interesse">
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {PRODUTOS_OPCOES.map(p => {
+              const ativo = form.produtos.includes(p);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setForm({ ...form, produtos: ativo ? form.produtos.filter(x => x !== p) : [...form.produtos, p] })}
+                  style={{
+                    padding: '5px 11px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: `1px solid ${ativo ? '#F59E0B' : 'var(--line)'}`,
+                    background: ativo ? 'rgba(245,158,11,.12)' : 'transparent',
+                    color: ativo ? '#F59E0B' : 'var(--muted)',
+                  }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
+        <Field label="Objetivo financeiro">
+          <input
+            value={form.objetivo}
+            onChange={e => setForm({ ...form, objetivo: e.target.value })}
+            style={input}
+            placeholder="Ex: Aposentadoria, proteção familiar, crescimento patrimonial..."
+          />
+        </Field>
+      </div>
 
       <div style={{ marginBottom: 16 }}>
         <div style={labelStyle}>Marcadores</div>

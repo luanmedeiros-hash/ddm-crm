@@ -18,10 +18,12 @@ import Atencao from './secoes/Atencao';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
 import Pipeline from './secoes/Pipeline';
+import Produtividade from './secoes/Produtividade';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
 import Equipe from './secoes/Equipe';
 import { FEATURES } from '@/lib/features';
+import { supabase } from '@/lib/supabase';
 
 interface Props {
   registros: RegInterno[];
@@ -41,6 +43,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   pipeline: { titulo: 'Pipeline', sub: 'Seus leads em cada etapa do funil — arraste para mover.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
   contatos: { titulo: 'Contatos', sub: 'Seus leads e contatos em andamento.' },
+  produtividade: { titulo: 'Produtividade', sub: 'Carteira, reuniões e atividades por consultor no mês.' },
   equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
 };
 
@@ -58,8 +61,11 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'mail' | 'bell' | 'user' | null>(null);
+  const [searchPessoas, setSearchPessoas] = useState<{ id: string; nome: string; fase: string; status: string; empresa: string | null }[]>([]);
+  const [searchPessoasLoading, setSearchPessoasLoading] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Datas referência: último dia útil
   const diasUteis = useMemo(() => ultimosDiasUteis(30), []);
@@ -181,6 +187,23 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
     return { consultores, bigPoints: bigPoints.slice(0, 5), bloqueios: bloqueios.slice(0, 5) };
   }, [searchQuery, todosValidos]);
 
+  // Busca global de pessoas (clientes e contatos) com debounce
+  useEffect(() => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const q = searchQuery.trim();
+    if (q.length < 2) { setSearchPessoas([]); return; }
+    searchDebounceRef.current = setTimeout(async () => {
+      setSearchPessoasLoading(true);
+      const { data } = await supabase
+        .from('pessoas')
+        .select('id, nome, fase, status, empresa')
+        .ilike('nome', `%${q}%`)
+        .limit(6);
+      setSearchPessoas((data || []) as { id: string; nome: string; fase: string; status: string; empresa: string | null }[]);
+      setSearchPessoasLoading(false);
+    }, 280);
+  }, [searchQuery]);
+
   // Notificações
   const notifAlertas = useMemo(() => {
     const arr: { tipo: 'crit' | 'warn'; titulo: string; desc: string; who: string }[] = [];
@@ -269,12 +292,30 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
               onFocus={() => setShowSearch(true)}
             />
             <span className="kbd">⌘ F</span>
-            {showSearch && searchResults && (
+            {showSearch && (searchResults || searchQuery.trim().length >= 2) && (
               <div className="search-results">
-                {searchResults.consultores.length === 0 && searchResults.bigPoints.length === 0 && searchResults.bloqueios.length === 0 && (
+                {/* Clientes e contatos */}
+                {searchPessoas.length > 0 && (
+                  <>
+                    <div className="search-result-group">Pessoas · {searchPessoas.length}</div>
+                    {searchPessoas.map(p => (
+                      <div key={p.id} className="dropdown-item" onClick={() => { goToTab(p.fase === 'cliente' ? 'clientes' : 'pipeline'); setShowSearch(false); }}>
+                        <div className="di-icon ok">{p.fase === 'cliente' ? '👤' : '🌱'}</div>
+                        <div className="di-content">
+                          <div className="di-title">{p.nome}</div>
+                          <div className="di-desc">{p.fase === 'cliente' ? 'Cliente' : 'Contato'}{p.empresa ? ` · ${p.empresa}` : ''}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {searchPessoasLoading && <div className="dropdown-empty">Buscando pessoas...</div>}
+
+                {/* Resultados existentes (consultores, big points, bloqueios) */}
+                {searchResults && searchResults.consultores.length === 0 && searchResults.bigPoints.length === 0 && searchResults.bloqueios.length === 0 && searchPessoas.length === 0 && !searchPessoasLoading && (
                   <div className="dropdown-empty">Nenhum resultado para &quot;{searchQuery}&quot;</div>
                 )}
-                {searchResults.consultores.length > 0 && (
+                {searchResults?.consultores && searchResults.consultores.length > 0 && (
                   <>
                     <div className="search-result-group">Consultores · {searchResults.consultores.length}</div>
                     {searchResults.consultores.map(c => (
@@ -288,7 +329,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                     ))}
                   </>
                 )}
-                {searchResults.bigPoints.length > 0 && (
+                {searchResults?.bigPoints && searchResults.bigPoints.length > 0 && (
                   <>
                     <div className="search-result-group">Big Points · {searchResults.bigPoints.length}</div>
                     {searchResults.bigPoints.map((bp, i) => (
@@ -302,7 +343,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                     ))}
                   </>
                 )}
-                {searchResults.bloqueios.length > 0 && (
+                {searchResults?.bloqueios && searchResults.bloqueios.length > 0 && (
                   <>
                     <div className="search-result-group">Bloqueios · {searchResults.bloqueios.length}</div>
                     {searchResults.bloqueios.map((b, i) => (
@@ -523,6 +564,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'pipeline' && <Pipeline />}
         {activeTab === 'clientes' && <Clientes />}
         {activeTab === 'contatos' && <Contatos />}
+        {activeTab === 'produtividade' && <Produtividade />}
         {activeTab === 'equipe' && <Equipe />}
       </main>
 
