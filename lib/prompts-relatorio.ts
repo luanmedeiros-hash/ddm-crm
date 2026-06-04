@@ -5,12 +5,19 @@
 export type TipoReuniao = 'analise' | 'c1' | 'c2' | 'c3' | 'c4' | 'acompanhamento';
 
 export const TIPO_REUNIAO_LABEL: Record<TipoReuniao, string> = {
-  analise:        'Análise (1ª reunião)',
+  analise:        'Análise',
   c1:             'C1 — Organização Financeira',
-  c2:             'C2 — Proteção Financeira',
-  c3:             'C3 — Acúmulo de Capital',
-  c4:             'C4 — Expansão Patrimonial',
+  c2:             'C2 — Seguro',
+  c3:             'C3 — Previdência',
+  c4:             'C4 — Consórcio',
   acompanhamento: 'Acompanhamento',
+};
+
+// Produto que é apresentado em cada reunião Cx
+export const PRODUTO_POR_REUNIAO: Partial<Record<TipoReuniao, string>> = {
+  c2: 'Seguro de Vida',
+  c3: 'Previdência',
+  c4: 'Consórcio',
 };
 
 export const TIPOS_REUNIAO: TipoReuniao[] = ['analise', 'c1', 'c2', 'c3', 'c4', 'acompanhamento'];

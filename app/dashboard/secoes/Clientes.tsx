@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Pessoa, ClienteStatus } from '@/lib/types';
 import PerfilCliente from './PerfilCliente';
+import { gerarCsv, baixarCsv, fmtDataBrCsv } from '@/lib/exportar';
 
 const STATUS_LABEL: Record<ClienteStatus, string> = {
   ativo: 'Ativo',
@@ -46,6 +47,32 @@ export default function Clientes() {
   const ativos = clientes.filter(c => c.status === 'ativo').length;
   const inativos = clientes.filter(c => c.status === 'inativo').length;
 
+  const exportarCsv = () => {
+    const cab = ['Nome', 'Email', 'Telefone', 'Empresa', 'Status', 'Origem', 'Data início', 'C1', 'C2 (Seguro)', 'C3 (Previdência)', 'C4 (Consórcio)', 'Produtos', 'Patrimônio', 'Renda mensal', 'Perfil de risco', 'Objetivo', 'Notas'];
+    const linhas = filtrados.map(c => {
+      const cx = c as Pessoa & { patrimonio?: number; renda_mensal?: number; perfil_risco?: string; produtos?: string[]; objetivo?: string };
+      return [
+        c.nome, c.email, c.telefone, c.empresa,
+        c.status === 'ativo' ? 'Ativo' : 'Inativo',
+        c.origem,
+        fmtDataBrCsv(c.data_inicio),
+        c.c1 ? 'Sim' : 'Não',
+        c.c2 ? 'Sim' : 'Não',
+        c.c3 ? 'Sim' : 'Não',
+        c.c4 ? 'Sim' : 'Não',
+        cx.produtos,
+        cx.patrimonio ?? '',
+        cx.renda_mensal ?? '',
+        cx.perfil_risco ?? '',
+        cx.objetivo ?? '',
+        c.notas,
+      ];
+    });
+    const csv = gerarCsv(cab, linhas);
+    const data = new Date().toISOString().slice(0, 10);
+    baixarCsv(csv, `clientes-${data}.csv`);
+  };
+
   const excluir = async (c: Pessoa, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`Excluir o cliente "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
@@ -61,7 +88,10 @@ export default function Clientes() {
         <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
           {ativos} ativo{ativos !== 1 ? 's' : ''} · {inativos} inativo{inativos !== 1 ? 's' : ''}
         </div>
-        <button onClick={() => setModalNovo(true)} style={btnPrimary}>+ Adicionar cliente</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={exportarCsv} style={btnGhost} title="Exportar lista em CSV">⬇ CSV</button>
+          <button onClick={() => setModalNovo(true)} style={btnPrimary}>+ Adicionar cliente</button>
+        </div>
       </div>
 
       {/* Filtros */}

@@ -13,11 +13,11 @@ interface Etapa {
 
 const ETAPAS: Etapa[] = [
   { tipo: 'analise',        label: 'Análise',        emoji: '🔍', diasApos: null },
-  { tipo: 'c1',             label: 'C1',             emoji: '1️⃣',  diasApos: 10  },
-  { tipo: 'c2',             label: 'C2',             emoji: '2️⃣',  diasApos: 10  },
-  { tipo: 'c3',             label: 'C3',             emoji: '3️⃣',  diasApos: 10  },
-  { tipo: 'c4',             label: 'C4',             emoji: '4️⃣',  diasApos: 10  },
-  { tipo: 'acompanhamento', label: 'Acompanhamento', emoji: '🔄', diasApos: null },
+  { tipo: 'c1',             label: 'C1 · Org.',      emoji: '1️⃣',  diasApos: 10  },
+  { tipo: 'c2',             label: 'C2 · Seguro',    emoji: '2️⃣',  diasApos: 10  },
+  { tipo: 'c3',             label: 'C3 · Prev.',     emoji: '3️⃣',  diasApos: 10  },
+  { tipo: 'c4',             label: 'C4 · Consórcio', emoji: '4️⃣',  diasApos: 10  },
+  { tipo: 'acompanhamento', label: 'Acomp.',         emoji: '🔄', diasApos: null },
 ];
 
 interface ReuniaoMin {

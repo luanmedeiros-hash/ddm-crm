@@ -3,8 +3,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Pessoa, ClienteStatus } from '@/lib/types';
-import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, type TipoReuniao } from '@/lib/prompts-relatorio';
+import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, PRODUTO_POR_REUNIAO, type TipoReuniao } from '@/lib/prompts-relatorio';
 import JornadaCliente from './JornadaCliente';
+import AbaAnexos from './AbaAnexos';
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface ReuniaoRow {
@@ -43,7 +44,7 @@ const TIPO_ATIV_LABEL: Record<string, { emoji: string; label: string; cor: strin
   visita:   { emoji: '🏠', label: 'Visita',    cor: '#a855f7' },
 };
 
-type Aba = 'info' | 'atividades' | 'reunioes' | 'proximos';
+type Aba = 'info' | 'atividades' | 'reunioes' | 'proximos' | 'anexos';
 
 const CHECK_LABELS = ['C1', 'C2', 'C3', 'C4'] as const;
 
@@ -100,6 +101,7 @@ export default function PerfilCliente({
               { key: 'atividades', label: 'Atividades' },
               { key: 'reunioes',   label: 'Reuniões' },
               { key: 'proximos',   label: 'Próximos Passos' },
+              { key: 'anexos',     label: 'Anexos' },
             ] as { key: Aba; label: string }[]).map(a => (
               <button
                 key={a.key}
@@ -124,6 +126,7 @@ export default function PerfilCliente({
           {aba === 'atividades' && <AbaAtividades pessoaId={cliente.id} />}
           {aba === 'reunioes'   && <AbaReunioes pessoaId={cliente.id} userId={cliente.user_id} />}
           {aba === 'proximos'   && <AbaProximos pessoaId={cliente.id} />}
+          {aba === 'anexos'     && <AbaAnexos pessoaId={cliente.id} />}
         </div>
       </div>
     </>
@@ -713,8 +716,19 @@ function FormReuniao({
       }));
     }
 
-    if (error) { setErro(error.message); setSaving(false); }
-    else { onSaved(); }
+    if (error) { setErro(error.message); setSaving(false); return; }
+
+    // Auto-marcar produto no perfil financeiro da pessoa
+    const produto = PRODUTO_POR_REUNIAO[tipo as TipoReuniao];
+    if (produto) {
+      const { data: p } = await supabase.from('pessoas').select('produtos').eq('id', pessoaId).single();
+      const atuais: string[] = (p as { produtos?: string[] })?.produtos || [];
+      if (!atuais.includes(produto)) {
+        await supabase.from('pessoas').update({ produtos: [...atuais, produto] }).eq('id', pessoaId);
+      }
+    }
+
+    onSaved();
   };
 
   return (
