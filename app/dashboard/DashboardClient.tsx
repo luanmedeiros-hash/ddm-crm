@@ -12,17 +12,13 @@ import ModalConsultor from './ModalConsultor';
 
 import Dashboard from './secoes/Dashboard';
 import Conversao from './secoes/Conversao';
-import Alertas from './secoes/Alertas';
-import Bloqueios from './secoes/Bloqueios';
 import Ranking from './secoes/Ranking';
 import Historico from './secoes/Historico';
-import BigPoints from './secoes/BigPoints';
-import Simulador from './secoes/Simulador';
+import Atencao from './secoes/Atencao';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
-import PerfilComportamental from './secoes/PerfilComportamental';
 import Equipe from './secoes/Equipe';
 import { FEATURES } from '@/lib/features';
 
@@ -36,15 +32,11 @@ interface Props {
 const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   dashboard: { titulo: 'Dashboard', sub: 'Acompanhe o funil consultivo da equipe em tempo real.' },
   conversao: { titulo: 'Conversão', sub: 'Análise do funil de conversão da equipe.' },
-  alertas: { titulo: 'Alertas', sub: 'Consultores que precisam de atenção.' },
-  bloqueios: { titulo: 'Bloqueios', sub: 'Bloqueios reportados pela equipe.' },
+  atencao: { titulo: 'Atenção', sub: 'Alertas, Big Points e Bloqueios da equipe.' },
   ranking: { titulo: 'Ranking', sub: 'Classificação dos consultores no período.' },
   historico: { titulo: 'Histórico', sub: 'Evolução dos registros ao longo do tempo.' },
-  bigpoints: { titulo: 'Big Points', sub: 'Acompanhamento dos Big Points da equipe.' },
-  simulador: { titulo: 'Simulador', sub: 'Simule cenários de conversão.' },
   agenda: { titulo: 'Agenda', sub: 'Seus eventos sincronizados do Google Calendar.' },
   'modo-daily': { titulo: 'Modo Daily', sub: 'Revisão rápida da equipe, um a um.' },
-  perfil: { titulo: 'Perfil Comportamental', sub: 'Perfil DISC dos consultores.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
   contatos: { titulo: 'Contatos', sub: 'Seus leads e contatos em andamento.' },
   equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
@@ -312,7 +304,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                   <>
                     <div className="search-result-group">Bloqueios · {searchResults.bloqueios.length}</div>
                     {searchResults.bloqueios.map((b, i) => (
-                      <div key={i} className="dropdown-item" onClick={() => { goToTab('bloqueios'); setFiltroConsultor(b.consultor); }}>
+                      <div key={i} className="dropdown-item" onClick={() => { goToTab('atencao'); setFiltroConsultor(b.consultor); }}>
                         <div className="di-icon warn">🚧</div>
                         <div className="di-content">
                           <div className="di-title">{b.tipo}</div>
@@ -362,7 +354,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                 <div className="dropdown-panel">
                   <div className="dropdown-header">
                     <span>Alertas · {notifAlertas.length}</span>
-                    <button className="clear-btn" onClick={() => goToTab('alertas')}>Ver todos</button>
+                    <button className="clear-btn" onClick={() => goToTab('atencao')}>Ver todos</button>
                   </div>
                   {notifAlertas.length === 0 ? (
                     <div className="dropdown-empty">✓ Nenhum alerta</div>
@@ -521,15 +513,11 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {/* SEÇÕES */}
         {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'conversao' && <Conversao filtered={filtered} />}
-        {activeTab === 'alertas' && <Alertas filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} consultores={listaConsultores} />}
-        {activeTab === 'bloqueios' && <Bloqueios filtered={filtered} />}
+        {activeTab === 'atencao' && <Atencao filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} consultores={listaConsultores} onSelect={setSelectedConsultor} />}
         {activeTab === 'ranking' && <Ranking filtered={filtered} todosRegs={registros} range={range} onSelect={setSelectedConsultor} consultores={listaConsultores} />}
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
-        {activeTab === 'bigpoints' && <BigPoints filtered={filtered} onSelect={setSelectedConsultor} />}
-        {activeTab === 'simulador' && <Simulador onSubmit={(msg) => showToastMsg(msg)} consultores={listaConsultores} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
-        {activeTab === 'perfil' && <PerfilComportamental filtroConsultor={filtroConsultor} onSelect={setSelectedConsultor} />}
         {activeTab === 'clientes' && <Clientes />}
         {activeTab === 'contatos' && <Contatos />}
         {activeTab === 'equipe' && <Equipe />}

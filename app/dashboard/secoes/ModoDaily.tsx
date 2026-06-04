@@ -9,6 +9,7 @@ import TrendArrow from '../components/TrendArrow';
 import FunnelDetail from '../components/FunnelDetail';
 import Icon from '@/components/Icon';
 import type { RegInterno } from '@/lib/types';
+import { PERFIS_DISC, DISC_CONFIG, PRAGMATICO_CONFIG } from '@/lib/disc';
 
 interface Props {
   filtered: RegInterno[];
@@ -224,6 +225,8 @@ export default function ModoDaily({ filtered, todosRegs, range, consultores }: P
                       <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{ult.bloqueioDesc}</div>
                     </div>
                   )}
+
+                  <DiscConsultor nome={consultor} />
                 </>
               ) : (
                 <div className="daily-empty">
@@ -242,6 +245,74 @@ export default function ModoDaily({ filtered, todosRegs, range, consultores }: P
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Bloco DISC para a daily ──────────────────────────────────
+function DiscConsultor({ nome }: { nome: string }) {
+  const [aberto, setAberto] = useState(false);
+  const perfil = PERFIS_DISC[nome];
+  if (!perfil) return null;
+
+  const disc = DISC_CONFIG[perfil.disc];
+  const prag = PRAGMATICO_CONFIG[perfil.pragmatico];
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <button
+        onClick={() => setAberto(a => !a)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', borderRadius: 10, border: `1px solid ${disc.cor}30`,
+          background: disc.corBg, cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>{disc.emoji}</span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: disc.cor, textTransform: 'uppercase', letterSpacing: '.5px' }}>
+              Perfil DISC
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginTop: 1 }}>
+              {disc.titulo} · {perfil.pragmatico}
+            </div>
+          </div>
+        </div>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{aberto ? '▲' : '▼'}</span>
+      </button>
+
+      {aberto && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {perfil.fortes.length > 0 && (
+            <DiscBloco titulo="💪 Pontos fortes" itens={perfil.fortes} cor={disc.cor} corBg={disc.corBg} />
+          )}
+          {perfil.atencao.length > 0 && (
+            <DiscBloco titulo="⚠️ Pontos de atenção" itens={perfil.atencao} cor="#F59E0B" corBg="rgba(245,158,11,.08)" />
+          )}
+          {perfil.conduta_daily.length > 0 && (
+            <DiscBloco titulo="☀️ Como conduzir a daily" itens={perfil.conduta_daily} cor={disc.cor} corBg={disc.corBg} />
+          )}
+          {perfil.feedback.length > 0 && (
+            <DiscBloco titulo="💬 Como dar feedback" itens={perfil.feedback} cor={disc.cor} corBg={disc.corBg} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiscBloco({ titulo, itens, cor, corBg }: { titulo: string; itens: string[]; cor: string; corBg: string }) {
+  return (
+    <div style={{ padding: '10px 14px', borderRadius: 10, background: corBg, border: `1px solid ${cor}25` }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: cor, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 8 }}>
+        {titulo}
+      </div>
+      <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
+        {itens.map((item, i) => (
+          <li key={i} style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6 }}>{item}</li>
+        ))}
+      </ul>
     </div>
   );
 }

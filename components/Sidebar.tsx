@@ -31,13 +31,9 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
   { key: 'clientes', icon: 'star', label: 'Clientes', liderado: true },
   { key: 'contatos', icon: 'mail', label: 'Contatos', liderado: true },
-  { key: 'alertas', icon: 'alert', label: 'Alertas' },
-  { key: 'bloqueios', icon: 'block', label: 'Bloqueios' },
+  { key: 'atencao', icon: 'alert', label: 'Atenção' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
-  { key: 'bigpoints', icon: 'star', label: 'Big Points' },
-  { key: 'simulador', icon: 'sim', label: 'Simulador' },
-  { key: 'perfil', icon: 'user', label: 'Perfil DISC', badge: { txt: '🔒 Líder', cls: '' } },
   { key: 'equipe', icon: 'user', label: 'Equipe', liderOnly: true },
 ];
 
