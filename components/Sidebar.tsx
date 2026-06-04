@@ -25,7 +25,7 @@ interface Props {
   isLider?: boolean;
 }
 
-const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean }[] = [
+const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean; liderOnly?: boolean }[] = [
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', liderado: true },
   { key: 'conversao', icon: 'funnel', label: 'Conversão', liderado: true },
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
@@ -38,11 +38,16 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'bigpoints', icon: 'star', label: 'Big Points' },
   { key: 'simulador', icon: 'sim', label: 'Simulador' },
   { key: 'perfil', icon: 'user', label: 'Perfil DISC', badge: { txt: '🔒 Líder', cls: '' } },
+  { key: 'equipe', icon: 'user', label: 'Equipe', liderOnly: true },
 ];
 
 export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false }: Props) {
   const algumSelecionado = !!filtroConsultor;
-  const NAV_ITEMS = ALL_NAV_ITEMS.filter(n => (!n.flag || FEATURES[n.flag]) && (isLider || n.liderado));
+  const NAV_ITEMS = ALL_NAV_ITEMS.filter(n =>
+    (!n.flag || FEATURES[n.flag]) &&
+    (isLider || n.liderado) &&
+    (!n.liderOnly || isLider)
+  );
 
   return (
     <aside className="sidebar">

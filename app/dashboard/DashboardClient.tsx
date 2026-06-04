@@ -23,6 +23,7 @@ import Agenda from './secoes/Agenda';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
 import PerfilComportamental from './secoes/PerfilComportamental';
+import Equipe from './secoes/Equipe';
 import { FEATURES } from '@/lib/features';
 
 interface Props {
@@ -46,6 +47,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   perfil: { titulo: 'Perfil Comportamental', sub: 'Perfil DISC dos consultores.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
   contatos: { titulo: 'Contatos', sub: 'Seus leads e contatos em andamento.' },
+  equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
 };
 
 export default function DashboardClient({ registros, userEmail, userName, isLider, consultores }: Props) {
@@ -530,6 +532,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'perfil' && <PerfilComportamental filtroConsultor={filtroConsultor} onSelect={setSelectedConsultor} />}
         {activeTab === 'clientes' && <Clientes />}
         {activeTab === 'contatos' && <Contatos />}
+        {activeTab === 'equipe' && <Equipe />}
       </main>
 
       {selectedConsultor && (
