@@ -17,6 +17,7 @@ import Historico from './secoes/Historico';
 import Atencao from './secoes/Atencao';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
+import Pipeline from './secoes/Pipeline';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
 import Equipe from './secoes/Equipe';
@@ -37,6 +38,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   historico: { titulo: 'Histórico', sub: 'Evolução dos registros ao longo do tempo.' },
   agenda: { titulo: 'Agenda', sub: 'Seus eventos sincronizados do Google Calendar.' },
   'modo-daily': { titulo: 'Modo Daily', sub: 'Revisão rápida da equipe, um a um.' },
+  pipeline: { titulo: 'Pipeline', sub: 'Seus leads em cada etapa do funil — arraste para mover.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
   contatos: { titulo: 'Contatos', sub: 'Seus leads e contatos em andamento.' },
   equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
@@ -518,6 +520,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
+        {activeTab === 'pipeline' && <Pipeline />}
         {activeTab === 'clientes' && <Clientes />}
         {activeTab === 'contatos' && <Contatos />}
         {activeTab === 'equipe' && <Equipe />}

@@ -29,6 +29,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', liderado: true },
   { key: 'conversao', icon: 'funnel', label: 'Conversão', liderado: true },
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
+  { key: 'pipeline', icon: 'funnel', label: 'Pipeline', liderado: true },
   { key: 'clientes', icon: 'star', label: 'Clientes', liderado: true },
   { key: 'contatos', icon: 'mail', label: 'Contatos', liderado: true },
   { key: 'atencao', icon: 'alert', label: 'Atenção' },

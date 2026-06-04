@@ -25,7 +25,24 @@ interface ProximoPasso {
   created_at: string;
 }
 
-type Aba = 'info' | 'reunioes' | 'proximos';
+interface Atividade {
+  id: string;
+  tipo: string;
+  descricao: string;
+  data_atividade: string;
+  created_at: string;
+}
+
+const TIPO_ATIV_LABEL: Record<string, { emoji: string; label: string; cor: string }> = {
+  ligacao:  { emoji: '📞', label: 'Ligação',   cor: '#6366f1' },
+  whatsapp: { emoji: '💬', label: 'WhatsApp',  cor: '#22c55e' },
+  email:    { emoji: '✉️', label: 'Email',     cor: '#F59E0B' },
+  reuniao:  { emoji: '🤝', label: 'Reunião',   cor: '#4a90c8' },
+  anotacao: { emoji: '📝', label: 'Anotação',  cor: '#9ca3af' },
+  visita:   { emoji: '🏠', label: 'Visita',    cor: '#a855f7' },
+};
+
+type Aba = 'info' | 'atividades' | 'reunioes' | 'proximos';
 
 const CHECK_LABELS = ['C1', 'C2', 'C3', 'C4'] as const;
 
@@ -78,9 +95,10 @@ export default function PerfilCliente({
           {/* Abas */}
           <div style={{ display: 'flex', gap: 2 }}>
             {([
-              { key: 'info', label: 'Info' },
-              { key: 'reunioes', label: 'Reuniões' },
-              { key: 'proximos', label: 'Próximos Passos' },
+              { key: 'info',       label: 'Info' },
+              { key: 'atividades', label: 'Atividades' },
+              { key: 'reunioes',   label: 'Reuniões' },
+              { key: 'proximos',   label: 'Próximos Passos' },
             ] as { key: Aba; label: string }[]).map(a => (
               <button
                 key={a.key}
@@ -95,9 +113,10 @@ export default function PerfilCliente({
 
         {/* Conteúdo */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {aba === 'info' && <AbaInfo cliente={cliente} onSaved={onSaved} />}
-          {aba === 'reunioes' && <AbaReunioes pessoaId={cliente.id} userId={cliente.user_id} />}
-          {aba === 'proximos' && <AbaProximos pessoaId={cliente.id} />}
+          {aba === 'info'       && <AbaInfo cliente={cliente} onSaved={onSaved} />}
+          {aba === 'atividades' && <AbaAtividades pessoaId={cliente.id} />}
+          {aba === 'reunioes'   && <AbaReunioes pessoaId={cliente.id} userId={cliente.user_id} />}
+          {aba === 'proximos'   && <AbaProximos pessoaId={cliente.id} />}
         </div>
       </div>
     </>
@@ -209,6 +228,182 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           {saving ? 'Salvando...' : 'Salvar alterações'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Aba Atividades ───────────────────────────────────────────
+function AbaAtividades({ pessoaId }: { pessoaId: string }) {
+  const [atividades, setAtividades] = useState<Atividade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<{ tipo: string; descricao: string; data_atividade: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('atividades')
+      .select('id, tipo, descricao, data_atividade, created_at')
+      .eq('pessoa_id', pessoaId)
+      .order('data_atividade', { ascending: false });
+    setAtividades((data as Atividade[]) || []);
+    setLoading(false);
+  }, [pessoaId]);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const adicionar = async () => {
+    if (!form?.descricao.trim()) { setErro('Descrição é obrigatória.'); return; }
+    setSaving(true); setErro('');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setErro('Sessão expirada.'); setSaving(false); return; }
+
+    const { error } = await supabase.from('atividades').insert({
+      pessoa_id: pessoaId,
+      user_id: user.id,
+      tipo: form.tipo,
+      descricao: form.descricao.trim(),
+      data_atividade: form.data_atividade || new Date().toISOString(),
+    });
+
+    if (error) { setErro(error.message); }
+    else { setForm(null); carregar(); }
+    setSaving(false);
+  };
+
+  const excluir = async (id: string) => {
+    await supabase.from('atividades').delete().eq('id', id);
+    carregar();
+  };
+
+  // Agrupar por dia
+  const grupos: { data: string; itens: Atividade[] }[] = [];
+  for (const a of atividades) {
+    const dia = a.data_atividade.slice(0, 10);
+    const g = grupos.find(g => g.data === dia);
+    if (g) g.itens.push(a);
+    else grupos.push({ data: dia, itens: [a] });
+  }
+
+  function fmtDia(iso: string) {
+    const d = new Date(iso + 'T12:00:00');
+    const hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    if (d.toDateString() === hoje.toDateString()) return 'Hoje';
+    if (d.toDateString() === ontem.toDateString()) return 'Ontem';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+  }
+
+  const novaAtivForm = { tipo: 'ligacao', descricao: '', data_atividade: new Date().toISOString().slice(0, 16) };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>{atividades.length} atividade{atividades.length !== 1 ? 's' : ''}</div>
+        {!form && (
+          <button onClick={() => setForm(novaAtivForm)} style={btnPrimary}>+ Registrar</button>
+        )}
+      </div>
+
+      {/* Formulário */}
+      {form && (
+        <div style={{ ...cardReuniao, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Nova atividade</div>
+
+          {/* Seletor de tipo */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {Object.entries(TIPO_ATIV_LABEL).map(([key, val]) => (
+              <button
+                key={key}
+                onClick={() => setForm({ ...form, tipo: key })}
+                style={{
+                  padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${form.tipo === key ? val.cor : 'var(--line)'}`,
+                  background: form.tipo === key ? val.cor + '18' : 'transparent',
+                  color: form.tipo === key ? val.cor : 'var(--muted)',
+                }}
+              >
+                {val.emoji} {val.label}
+              </button>
+            ))}
+          </div>
+
+          <Field label="Descrição *">
+            <textarea
+              value={form.descricao}
+              onChange={e => setForm({ ...form, descricao: e.target.value })}
+              rows={3}
+              style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="O que aconteceu? Ex: Liguei para apresentar a proposta..."
+              autoFocus
+            />
+          </Field>
+
+          <Field label="Data e hora">
+            <input
+              type="datetime-local"
+              value={form.data_atividade}
+              onChange={e => setForm({ ...form, data_atividade: e.target.value })}
+              style={input}
+            />
+          </Field>
+
+          {erro && <div style={errorBox}>{erro}</div>}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setForm(null); setErro(''); }} style={btnGhost}>Cancelar</button>
+            <button onClick={adicionar} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Carregando...</div>
+      ) : atividades.length === 0 && !form ? (
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+          Nenhuma atividade registrada.<br />
+          <span style={{ fontSize: 12 }}>Registre ligações, mensagens e visitas.</span>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {grupos.map(g => (
+            <div key={g.data}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
+                {fmtDia(g.data)}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {g.itens.map(a => {
+                  const meta = TIPO_ATIV_LABEL[a.tipo] || { emoji: '📌', label: a.tipo, cor: 'var(--muted)' };
+                  return (
+                    <div key={a.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      {/* Linha do tempo */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 2 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 999, background: meta.cor + '18', border: `1.5px solid ${meta.cor}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0 }}>
+                          {meta.emoji}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, ...cardReuniao, padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: meta.cor }}>{meta.label}</span>
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                            {new Date(a.data_atividade).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span style={{ flex: 1 }} />
+                          <button onClick={() => excluir(a.id)} style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>{a.descricao}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
