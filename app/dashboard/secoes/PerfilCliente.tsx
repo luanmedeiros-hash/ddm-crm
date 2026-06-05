@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Pessoa, ClienteStatus } from '@/lib/types';
+import type { Pessoa } from '@/lib/types';
 import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, PRODUTO_POR_REUNIAO, type TipoReuniao } from '@/lib/prompts-relatorio';
 import JornadaCliente from './JornadaCliente';
 import AbaAnexos from './AbaAnexos';
@@ -130,11 +130,13 @@ export default function PerfilCliente({
 
         {/* Conteúdo */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {/* Jornada sempre visível no topo */}
-          <JornadaCliente
-            pessoaId={cliente.id}
-            dataFechamento={(cliente as Pessoa & { data_fechamento?: string }).data_fechamento || cliente.data_inicio || null}
-          />
+          {/* Jornada — apenas para clientes (a jornada começa no fechamento) */}
+          {cliente.fase === 'cliente' && (
+            <JornadaCliente
+              pessoaId={cliente.id}
+              dataFechamento={(cliente as Pessoa & { data_fechamento?: string }).data_fechamento || cliente.data_inicio || null}
+            />
+          )}
 
           {aba === 'info'       && <AbaInfo cliente={cliente} onSaved={onSaved} />}
           {aba === 'atividades' && <AbaAtividades pessoaId={cliente.id} />}
@@ -169,17 +171,38 @@ function parseMoeda(s: string): number | null {
   return isNaN(n) ? null : n;
 }
 
+const STATUS_LEAD_OPCOES: { value: string; label: string }[] = [
+  { value: 'novo',             label: 'Novo' },
+  { value: 'contatado',        label: 'Contatado' },
+  { value: 'reuniao_agendada', label: 'Reunião agendada' },
+  { value: 'convertido',       label: 'Convertido' },
+  { value: 'perdido',          label: 'Perdido' },
+];
+
+// Roteiro de pontos da ligação — baseado no Card de Ligação da W1
+const ROTEIRO_LIGACAO =
+`• Recomendante:
+• Perfil: (1 ganha>gasta / 2 ganha=gasta / 3 ganha<gasta)
+• Objetivo principal / Big Point emocional:
+• Situação atual (estratégia hoje + dificuldade):
+• Tomador de decisão:
+• Reunião de Análise agendada para:
+• Observações:`;
+
 // ─── Aba Info ─────────────────────────────────────────────────
 function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void }) {
+  const isLead = cliente.fase === 'lead';
   const ext = cliente as Pessoa & { patrimonio?: number; renda_mensal?: number; perfil_risco?: string; produtos?: string[]; objetivo?: string };
   const [form, setForm] = useState({
     nome: cliente.nome,
     telefone: cliente.telefone || '',
     email: cliente.email || '',
     empresa: cliente.empresa || '',
-    status: (cliente.status === 'inativo' ? 'inativo' : 'ativo') as ClienteStatus,
+    status: (isLead ? (cliente.status || 'novo') : (cliente.status === 'inativo' ? 'inativo' : 'ativo')) as string,
     origem: cliente.origem || '',
     notas: cliente.notas || '',
+    pontos_ligacao: (cliente as Pessoa & { pontos_ligacao?: string }).pontos_ligacao || '',
+    proximo_contato: cliente.proximo_contato || '',
     data_inicio: cliente.data_inicio || '',
     data_fechamento: (cliente as Pessoa & { data_fechamento?: string }).data_fechamento || '',
     winner_contact_id: (cliente as Pessoa & { winner_contact_id?: string }).winner_contact_id || '',
@@ -211,6 +234,8 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         status: form.status,
         origem: form.origem || null,
         notas: form.notas || null,
+        pontos_ligacao: form.pontos_ligacao || null,
+        proximo_contato: form.proximo_contato || null,
         data_inicio: form.data_inicio || null,
         data_fechamento: (form as typeof form & { data_fechamento?: string }).data_fechamento || null,
         winner_contact_id: (form as typeof form & { winner_contact_id?: string }).winner_contact_id || null,
@@ -239,9 +264,13 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           <input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} style={input} placeholder="(00) 00000-0000" />
         </Field>
         <Field label="Status" flex>
-          <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as ClienteStatus })} style={input}>
-            <option value="ativo">Ativo</option>
-            <option value="inativo">Inativo</option>
+          <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={input}>
+            {isLead
+              ? STATUS_LEAD_OPCOES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+              : (<>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </>)}
           </select>
         </Field>
       </div>
@@ -258,34 +287,68 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         <Field label="Origem" flex>
           <input value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} style={input} placeholder="Indicação, evento..." />
         </Field>
-        <Field label="Data de início" flex>
-          <input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} style={input} />
-        </Field>
+        {isLead ? (
+          <Field label="Próximo contato" flex>
+            <input type="date" value={form.proximo_contato} onChange={e => setForm({ ...form, proximo_contato: e.target.value })} style={input} />
+          </Field>
+        ) : (
+          <Field label="Data de início" flex>
+            <input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} style={input} />
+          </Field>
+        )}
       </div>
 
-      <Field label="Data de fechamento (quando virou cliente)">
-        <input
-          type="date"
-          value={(form as typeof form & { data_fechamento?: string }).data_fechamento || ''}
-          onChange={e => setForm({ ...form, ...{ data_fechamento: e.target.value } })}
-          style={input}
-        />
-      </Field>
+      {!isLead && (
+        <>
+          <Field label="Data de fechamento (quando virou cliente)">
+            <input
+              type="date"
+              value={(form as typeof form & { data_fechamento?: string }).data_fechamento || ''}
+              onChange={e => setForm({ ...form, ...{ data_fechamento: e.target.value } })}
+              style={input}
+            />
+          </Field>
 
-      <Field label="ID do contato no W1nner">
-        <input
-          value={(form as typeof form & { winner_contact_id?: string }).winner_contact_id || ''}
-          onChange={e => setForm({ ...form, ...{ winner_contact_id: e.target.value } })}
-          style={input}
-          placeholder="Ex: 1422308 (número do contato no W1nner)"
+          <Field label="ID do contato no W1nner">
+            <input
+              value={(form as typeof form & { winner_contact_id?: string }).winner_contact_id || ''}
+              onChange={e => setForm({ ...form, ...{ winner_contact_id: e.target.value } })}
+              style={input}
+              placeholder="Ex: 1422308 (número do contato no W1nner)"
+            />
+          </Field>
+        </>
+      )}
+
+      {/* Pontos da ligação — foco do card de lead (Card de Ligação W1) */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+          <span style={labelStyle}>📞 Pontos da ligação</span>
+          {!form.pontos_ligacao.trim() && (
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, pontos_ligacao: ROTEIRO_LIGACAO })}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              + Inserir roteiro
+            </button>
+          )}
+        </div>
+        <textarea
+          value={form.pontos_ligacao}
+          onChange={e => setForm({ ...form, pontos_ligacao: e.target.value })}
+          rows={isLead ? 7 : 4}
+          style={{ ...input, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+          placeholder="Principais pontos discutidos na ligação: perfil, objetivo / Big Point emocional, situação atual, agendamento da análise..."
         />
-      </Field>
+      </div>
 
       <Field label="Notas">
-        <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={4} style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Observações sobre o cliente..." />
+        <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3} style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Observações gerais..." />
       </Field>
 
-      {/* ── Perfil financeiro ── */}
+      {/* ── Perfil financeiro (apenas clientes — levantado a partir da Análise) ── */}
+      {!isLead && (<>
       <div style={{ margin: '4px 0 14px', paddingTop: 14, borderTop: '1px solid var(--line)' }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 12 }}>
           💰 Perfil financeiro
@@ -381,6 +444,7 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           })}
         </div>
       </div>
+      </>)}
 
       {erro && <div style={errorBox}>{erro}</div>}
       {salvo && <div style={successBox}>✓ Salvo com sucesso</div>}
