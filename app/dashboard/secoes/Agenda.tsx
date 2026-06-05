@@ -205,6 +205,30 @@ function inicioSemanaSabado(d: Date) {
 
 type EvDB = CalendarEventDB & { _consultor?: string };
 
+const HORA_ALT = 46; // altura de 1 hora em px
+
+function horaDecimal(iso: string) {
+  const d = new Date(iso);
+  return d.getHours() + d.getMinutes() / 60;
+}
+
+// Distribui eventos sobrepostos em colunas (lanes), estilo Google Agenda
+function organizarLanes(evs: EvDB[]): { ev: EvDB; lane: number; lanes: number }[] {
+  const ordenados = [...evs].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+  const fimLane: number[] = [];
+  const provisorio: { ev: EvDB; lane: number }[] = [];
+  for (const ev of ordenados) {
+    const ini = new Date(ev.start_at).getTime();
+    const fim = new Date(ev.end_at).getTime();
+    let lane = fimLane.findIndex(f => f <= ini);
+    if (lane === -1) { lane = fimLane.length; fimLane.push(fim); }
+    else fimLane[lane] = fim;
+    provisorio.push({ ev, lane });
+  }
+  const totalLanes = Math.max(1, fimLane.length);
+  return provisorio.map(p => ({ ...p, lanes: totalLanes }));
+}
+
 function WeekGrid({
   events,
   onLink,
@@ -223,17 +247,31 @@ function WeekGrid({
     return d;
   });
 
-  const byDay = new Map<string, EvDB[]>();
+  // Separa eventos com horário (timed) e de dia inteiro (all-day), por dia
+  const timedByDay = new Map<string, EvDB[]>();
+  const allDayByDay = new Map<string, EvDB[]>();
+  let minH = 8, maxH = 19; // faixa base de horas, expande conforme eventos
   for (const ev of events) {
-    const day = ev.start_at.slice(0, 10);
-    if (!byDay.has(day)) byDay.set(day, []);
-    byDay.get(day)!.push(ev);
+    if (ev.is_all_day || ev.start_at.length <= 10) {
+      const day = ev.start_at.slice(0, 10);
+      if (!allDayByDay.has(day)) allDayByDay.set(day, []);
+      allDayByDay.get(day)!.push(ev);
+    } else {
+      const day = ymdLocal(new Date(ev.start_at));
+      if (!timedByDay.has(day)) timedByDay.set(day, []);
+      timedByDay.get(day)!.push(ev);
+      minH = Math.min(minH, Math.floor(horaDecimal(ev.start_at)));
+      maxH = Math.max(maxH, Math.ceil(horaDecimal(ev.end_at)));
+    }
   }
-  for (const arr of byDay.values()) {
-    arr.sort((a, b) => a.start_at.localeCompare(b.start_at));
-  }
+  minH = Math.max(0, minH);
+  maxH = Math.min(24, Math.max(maxH, minH + 1));
+  const horas: number[] = [];
+  for (let h = minH; h <= maxH; h++) horas.push(h);
+  const gridAltura = (maxH - minH) * HORA_ALT;
 
   const hojeYmd = ymdLocal(new Date());
+  const temAllDay = dias.some(d => (allDayByDay.get(ymdLocal(d)) || []).length > 0);
   const fim = dias[6];
   const mesmoMes = anchor.getMonth() === fim.getMonth();
   const rangeLabel = mesmoMes
@@ -258,72 +296,118 @@ function WeekGrid({
         </div>
       </div>
 
-      {/* Grade 7 colunas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 6, overflowX: 'auto' }}>
-        {dias.map((d, i) => {
-          const ymd = ymdLocal(d);
-          const isHoje = ymd === hojeYmd;
-          const evs = byDay.get(ymd) || [];
-          return (
-            <div key={ymd} style={{
-              borderRadius: 10,
-              border: `1px solid ${isHoje ? 'var(--primary)' : 'var(--line)'}`,
-              background: isHoje ? 'var(--primary-100)' : 'var(--bg-soft)',
-              minHeight: 130,
-              display: 'flex',
-              flexDirection: 'column',
-            }}>
-              {/* Cabeçalho do dia */}
-              <div style={{
-                padding: '7px 9px', borderBottom: `1px solid ${isHoje ? 'var(--primary-200)' : 'var(--line)'}`,
-                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: isHoje ? 'var(--primary-bright)' : 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
-                  {DIAS_SEM_SAB[i]}
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: isHoje ? 'var(--primary-bright)' : 'var(--text)' }}>
-                  {d.getDate()}
-                </span>
-              </div>
+      {/* Calendário semanal estilo Google */}
+      <div style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg-card)' }}>
+        <div style={{ minWidth: 720 }}>
+          {/* Cabeçalho dos dias */}
+          <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)' }}>
+            <div />
+            {dias.map((d, i) => {
+              const isHoje = ymdLocal(d) === hojeYmd;
+              return (
+                <div key={ymdLocal(d)} style={{
+                  padding: '8px 4px', textAlign: 'center', borderLeft: '1px solid var(--line)',
+                  background: isHoje ? 'var(--primary-100)' : 'transparent',
+                }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: isHoje ? 'var(--primary-bright)' : 'var(--muted)' }}>
+                    {DIAS_SEM_SAB[i]}
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 800, marginTop: 1, color: isHoje ? 'var(--primary-bright)' : 'var(--text)' }}>
+                    {d.getDate()}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-              {/* Eventos do dia */}
-              <div style={{ padding: 5, display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-                {evs.length === 0 ? (
-                  <div style={{ flex: 1, minHeight: 30 }} />
-                ) : (
-                  evs.map(ev => {
+          {/* Faixa de eventos de dia inteiro */}
+          {temAllDay && (
+            <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--line)', background: 'var(--bg-soft)' }}>
+              <div style={{ fontSize: 9, color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 6px', textAlign: 'right' }}>dia todo</div>
+              {dias.map(d => {
+                const evs = allDayByDay.get(ymdLocal(d)) || [];
+                return (
+                  <div key={ymdLocal(d)} style={{ borderLeft: '1px solid var(--line)', padding: 3, display: 'flex', flexDirection: 'column', gap: 3, minHeight: 24 }}>
+                    {evs.map(ev => (
+                      <button key={ev.id} onClick={() => setSel(ev)} title={ev.summary}
+                        style={{ textAlign: 'left', padding: '3px 6px', borderRadius: 5, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 10.5, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ev.summary}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Grade de horas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)' }}>
+            {/* Eixo de horários */}
+            <div style={{ position: 'relative', height: gridAltura }}>
+              {horas.map(h => (
+                <div key={h} style={{ position: 'absolute', top: (h - minH) * HORA_ALT, right: 6, transform: 'translateY(-7px)', fontSize: 10.5, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                  {String(h).padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+
+            {/* Colunas dos dias */}
+            {dias.map(d => {
+              const ymd = ymdLocal(d);
+              const isHoje = ymd === hojeYmd;
+              const evs = timedByDay.get(ymd) || [];
+              const posicionados = organizarLanes(evs);
+              return (
+                <div key={ymd} style={{
+                  position: 'relative', height: gridAltura, borderLeft: '1px solid var(--line)',
+                  background: isHoje ? 'rgba(61,130,189,.04)' : 'transparent',
+                }}>
+                  {/* Linhas de hora */}
+                  {horas.map(h => (
+                    <div key={h} style={{ position: 'absolute', top: (h - minH) * HORA_ALT, left: 0, right: 0, height: HORA_ALT, borderTop: '1px solid var(--line)' }} />
+                  ))}
+
+                  {/* Eventos posicionados */}
+                  {posicionados.map(({ ev, lane, lanes }) => {
+                    const ini = horaDecimal(ev.start_at);
+                    const fimEv = Math.max(horaDecimal(ev.end_at), ini + 0.25);
+                    const top = (ini - minH) * HORA_ALT;
+                    const altura = Math.max((fimEv - ini) * HORA_ALT - 2, 18);
+                    const largura = 100 / lanes;
                     const hasLead = !!ev.lead_id;
                     return (
                       <button
                         key={ev.id}
                         onClick={() => setSel(ev)}
-                        title={ev.summary}
+                        title={`${ev.summary} · ${fmtTime(ev.start_at)}–${fmtTime(ev.end_at)}`}
                         style={{
-                          textAlign: 'left', width: '100%', padding: '5px 7px', borderRadius: 6,
-                          border: `1px solid ${hasLead ? 'rgba(99,102,241,.35)' : 'var(--line)'}`,
-                          borderLeft: `3px solid ${hasLead ? '#6366f1' : 'var(--primary)'}`,
-                          background: 'var(--bg-card)', cursor: 'pointer',
+                          position: 'absolute', top, height: altura,
+                          left: `calc(${lane * largura}% + 2px)`, width: `calc(${largura}% - 4px)`,
+                          textAlign: 'left', padding: '3px 5px', borderRadius: 5, overflow: 'hidden',
+                          border: 'none', borderLeft: `3px solid ${hasLead ? '#4f46e5' : 'var(--primary-bright)'}`,
+                          background: hasLead ? 'rgba(99,102,241,.14)' : 'var(--primary-100)',
+                          color: 'var(--text)', cursor: 'pointer', lineHeight: 1.2,
                         }}
                       >
-                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                          {ev.is_all_day ? 'Dia todo' : fmtTime(ev.start_at)}
+                        <div style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmtTime(ev.start_at)}
                         </div>
-                        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {ev.summary}
                         </div>
-                        {hasLead && (
-                          <div style={{ fontSize: 10, color: '#818cf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {hasLead && altura > 40 && (
+                          <div style={{ fontSize: 9.5, color: '#6366f1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             👤 {ev.lead_nome}
                           </div>
                         )}
                       </button>
                     );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Popover de detalhe do evento */}
@@ -550,12 +634,6 @@ export default function Agenda({ filtroConsultor }: Props) {
 
   return (
     <div className="fade-in" style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div>
-        <div className="sec-eyebrow"><span className="eyebrow-dot"></span><span>Google Calendar · read-only</span></div>
-        <h1 className="sec-title">{filtroConsultor ? `Agenda de ${filtroConsultor}` : 'Agenda da equipe'}</h1>
-        <div className="sec-sub">Sincronize e visualize os próximos 30 dias. Vincule eventos a pessoas.</div>
-      </div>
-
       {/* Seletor de consultor */}
       {!filtroConsultor && consultores.length > 1 && (
         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
