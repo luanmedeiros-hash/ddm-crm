@@ -263,10 +263,15 @@ export function getNextDaysRange(days = 30, timezone = 'America/Sao_Paulo') {
   const localStr = now.toLocaleString('en-US', { timeZone: timezone });
   const local = new Date(localStr);
   local.setHours(0, 0, 0, 0);
+  // Recua até o sábado da semana corrente (semana Sáb→Sex), para que a
+  // visão semanal mostre os dias já passados desta semana também.
+  const offSabado = (local.getDay() + 1) % 7; // Sáb→0, Dom→1, ... Sex→6
+  const from = new Date(local);
+  from.setDate(local.getDate() - offSabado);
   const to = new Date(local);
   to.setDate(local.getDate() + days);
   to.setHours(23, 59, 59, 999);
-  return { from: local.toISOString(), to: to.toISOString() };
+  return { from: from.toISOString(), to: to.toISOString() };
 }
 
 export function getCurrentWeekRange(timezone = 'America/Sao_Paulo') {

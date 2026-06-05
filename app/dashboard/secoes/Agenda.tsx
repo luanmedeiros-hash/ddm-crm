@@ -186,6 +186,176 @@ function EventCard({ ev, showConsultor, onLink, onRelatorio }: { ev: CalendarEve
   );
 }
 
+// ─── Visão em grade semanal (Sábado → Sexta) ──────────────────────────────────
+
+const DIAS_SEM_SAB = ['Sáb', 'Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+
+function ymdLocal(d: Date) {
+  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
+
+// Início da semana = sábado anterior (ou o próprio, se for sábado)
+function inicioSemanaSabado(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const off = (x.getDay() + 1) % 7; // Sáb→0, Dom→1, ... Sex→6
+  x.setDate(x.getDate() - off);
+  return x;
+}
+
+type EvDB = CalendarEventDB & { _consultor?: string };
+
+function WeekGrid({
+  events,
+  onLink,
+  onRelatorio,
+}: {
+  events: EvDB[];
+  onLink: (ev: EvDB) => void;
+  onRelatorio: (ev: EvDB) => void;
+}) {
+  const [anchor, setAnchor] = useState<Date>(() => inicioSemanaSabado(new Date()));
+  const [sel, setSel] = useState<EvDB | null>(null);
+
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(anchor);
+    d.setDate(anchor.getDate() + i);
+    return d;
+  });
+
+  const byDay = new Map<string, EvDB[]>();
+  for (const ev of events) {
+    const day = ev.start_at.slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push(ev);
+  }
+  for (const arr of byDay.values()) {
+    arr.sort((a, b) => a.start_at.localeCompare(b.start_at));
+  }
+
+  const hojeYmd = ymdLocal(new Date());
+  const fim = dias[6];
+  const mesmoMes = anchor.getMonth() === fim.getMonth();
+  const rangeLabel = mesmoMes
+    ? `${anchor.getDate()} – ${fim.getDate()} ${MESES[fim.getMonth()]} ${fim.getFullYear()}`
+    : `${anchor.getDate()} ${MESES[anchor.getMonth()]} – ${fim.getDate()} ${MESES[fim.getMonth()]} ${fim.getFullYear()}`;
+
+  const navegar = (semanas: number) => {
+    const d = new Date(anchor);
+    d.setDate(anchor.getDate() + semanas * 7);
+    setAnchor(d);
+  };
+
+  return (
+    <div>
+      {/* Navegação */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{rangeLabel}</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => navegar(-1)} style={navBtn} title="Semana anterior">‹</button>
+          <button onClick={() => setAnchor(inicioSemanaSabado(new Date()))} style={{ ...navBtn, width: 'auto', padding: '0 12px' }}>Hoje</button>
+          <button onClick={() => navegar(1)} style={navBtn} title="Próxima semana">›</button>
+        </div>
+      </div>
+
+      {/* Grade 7 colunas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(120px, 1fr))', gap: 6, overflowX: 'auto' }}>
+        {dias.map((d, i) => {
+          const ymd = ymdLocal(d);
+          const isHoje = ymd === hojeYmd;
+          const evs = byDay.get(ymd) || [];
+          return (
+            <div key={ymd} style={{
+              borderRadius: 10,
+              border: `1px solid ${isHoje ? 'var(--primary)' : 'var(--line)'}`,
+              background: isHoje ? 'var(--primary-100)' : 'var(--bg-soft)',
+              minHeight: 130,
+              display: 'flex',
+              flexDirection: 'column',
+            }}>
+              {/* Cabeçalho do dia */}
+              <div style={{
+                padding: '7px 9px', borderBottom: `1px solid ${isHoje ? 'var(--primary-200)' : 'var(--line)'}`,
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+              }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isHoje ? 'var(--primary-bright)' : 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                  {DIAS_SEM_SAB[i]}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: isHoje ? 'var(--primary-bright)' : 'var(--text)' }}>
+                  {d.getDate()}
+                </span>
+              </div>
+
+              {/* Eventos do dia */}
+              <div style={{ padding: 5, display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                {evs.length === 0 ? (
+                  <div style={{ flex: 1, minHeight: 30 }} />
+                ) : (
+                  evs.map(ev => {
+                    const hasLead = !!ev.lead_id;
+                    return (
+                      <button
+                        key={ev.id}
+                        onClick={() => setSel(ev)}
+                        title={ev.summary}
+                        style={{
+                          textAlign: 'left', width: '100%', padding: '5px 7px', borderRadius: 6,
+                          border: `1px solid ${hasLead ? 'rgba(99,102,241,.35)' : 'var(--line)'}`,
+                          borderLeft: `3px solid ${hasLead ? '#6366f1' : 'var(--primary)'}`,
+                          background: 'var(--bg-card)', cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                          {ev.is_all_day ? 'Dia todo' : fmtTime(ev.start_at)}
+                        </div>
+                        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ev.summary}
+                        </div>
+                        {hasLead && (
+                          <div style={{ fontSize: 10, color: '#818cf8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            👤 {ev.lead_nome}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Popover de detalhe do evento */}
+      {sel && (
+        <div onClick={() => setSel(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 14, padding: 20, width: '100%', maxWidth: 400, boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{sel.summary}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14 }}>
+              {fmtDay(sel.start_at)} · {sel.is_all_day ? 'Dia todo' : `${fmtTime(sel.start_at)}–${fmtTime(sel.end_at)}`}
+            </div>
+            {sel.location && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 6 }}>📍 {sel.location}</div>}
+            {sel.hangout_link && <a href={sel.hangout_link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: 'var(--primary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>🎥 Google Meet</a>}
+            {sel.lead_id && (
+              <div style={{ fontSize: 12.5, color: 'var(--text)', marginBottom: 6 }}>👤 <strong>{sel.lead_nome}</strong></div>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => { onLink(sel); setSel(null); }} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                {sel.lead_id ? 'Editar vínculo' : '+ Vincular pessoa'}
+              </button>
+              <button onClick={() => { onRelatorio(sel); setSel(null); }} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+                📄 Relatório
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const navBtn: React.CSSProperties = { width: 34, height: 32, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
 // ─── Painel de um consultor ───────────────────────────────────────────────────
 
 function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consultor: string; onToast: (m: string, e?: boolean) => void }) {
@@ -196,6 +366,7 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
   const [lastSync, setLastSync] = useState<string|null>(null);
   const [modal, setModal] = useState<LinkState|null>(null);
   const [relModal, setRelModal] = useState<RelatorioState|null>(null);
+  const [vista, setVista] = useState<'semana' | 'lista'>('semana');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -277,10 +448,23 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
           {events.length} evento{events.length!==1?'s':''} · próximos 30 dias
           {lastSync && <> · sync {new Date(lastSync).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</>}
         </div>
-        <button onClick={sync} disabled={syncing} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--line)', background:syncing?'var(--bg-soft)':'var(--primary)', color:syncing?'var(--muted)':'#fff', cursor:syncing?'not-allowed':'pointer', fontSize:12, fontWeight:700, display:'flex', gap:6, alignItems:'center' }}>
-          <span style={{ display:'inline-block', animation:syncing?'spin 1s linear infinite':'none' }}>🔄</span>
-          {syncing ? 'Sincronizando...' : 'Sincronizar Google'}
-        </button>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {/* Toggle Semana / Lista */}
+          <div style={{ display:'flex', borderRadius:8, border:'1px solid var(--line)', overflow:'hidden' }}>
+            {([['semana','📅 Semana'],['lista','☰ Lista']] as const).map(([v, label]) => (
+              <button key={v} onClick={() => setVista(v)}
+                style={{ padding:'6px 11px', border:'none', fontSize:12, fontWeight:600, cursor:'pointer',
+                  background: vista===v ? 'var(--primary)' : 'transparent',
+                  color: vista===v ? '#fff' : 'var(--muted)' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button onClick={sync} disabled={syncing} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--line)', background:syncing?'var(--bg-soft)':'var(--primary)', color:syncing?'var(--muted)':'#fff', cursor:syncing?'not-allowed':'pointer', fontSize:12, fontWeight:700, display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ display:'inline-block', animation:syncing?'spin 1s linear infinite':'none' }}>🔄</span>
+            {syncing ? 'Sincronizando...' : 'Sincronizar Google'}
+          </button>
+        </div>
       </div>
 
       {loading && <div style={{ padding:24, textAlign:'center', color:'var(--muted)', fontSize:13 }}>Carregando...</div>}
@@ -293,7 +477,17 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
         </div>
       )}
 
-      {!loading && days.map(d => (
+      {/* Visão em grade semanal (Sábado → Sexta) */}
+      {!loading && events.length > 0 && vista === 'semana' && (
+        <WeekGrid
+          events={events}
+          onLink={ev => setModal({ ev, userId, lead_id: ev.lead_id||'', lead_notas: ev.lead_notas||'', saving:false })}
+          onRelatorio={ev => setRelModal({ ev, tipo: (ev.tipo_reuniao as TipoReuniao) || 'analise', transcricao: ev.transcricao || '', relatorio: ev.relatorio || '', gerando:false })}
+        />
+      )}
+
+      {/* Visão em lista */}
+      {!loading && vista === 'lista' && days.map(d => (
         <div key={d}>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.5px', marginBottom:6, paddingBottom:5, borderBottom:'1px solid var(--line)' }}>
             {fmtDay(d)}
