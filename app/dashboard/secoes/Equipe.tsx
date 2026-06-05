@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import ConexaoWinner from './ConexaoWinner';
 
 interface MembroEquipe {
   id: string;
@@ -87,6 +88,9 @@ export default function Equipe() {
           </button>
         )}
       </div>
+
+      {/* Conexão W1nner — cada usuário conecta sua própria conta */}
+      <ConexaoWinner />
 
       {sucesso && <div style={successBox}>{sucesso}</div>}
 

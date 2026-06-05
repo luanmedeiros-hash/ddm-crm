@@ -283,3 +283,53 @@ export function getCurrentWeekRange(timezone = 'America/Sao_Paulo') {
   sunday.setHours(23, 59, 59, 999);
   return { from: monday.toISOString(), to: sunday.toISOString() };
 }
+
+// ─── Criar evento ─────────────────────────────────────────────
+
+export interface CreateEventPayload {
+  summary: string;
+  description?: string;
+  location?: string;
+  startIso: string;   // ISO 8601 com timezone
+  endIso: string;
+  attendeeEmails?: string[];
+  timeZone?: string;
+}
+
+export async function createCalendarEvent(
+  accessToken: string,
+  payload: CreateEventPayload,
+  calendarId = 'primary',
+): Promise<{ id: string; htmlLink: string } | null> {
+  const body = {
+    summary: payload.summary,
+    description: payload.description || '',
+    location: payload.location || '',
+    start: { dateTime: payload.startIso, timeZone: payload.timeZone || 'America/Sao_Paulo' },
+    end:   { dateTime: payload.endIso,   timeZone: payload.timeZone || 'America/Sao_Paulo' },
+    attendees: (payload.attendeeEmails || []).map(email => ({ email })),
+    reminders: { useDefault: true },
+  };
+
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    },
+  );
+
+  if (!res.ok) {
+    const txt = await res.text();
+    console.error('[google-calendar] createEvent falhou:', res.status, txt);
+    return null;
+  }
+
+  const json = await res.json() as { id: string; htmlLink: string };
+  return { id: json.id, htmlLink: json.htmlLink };
+}

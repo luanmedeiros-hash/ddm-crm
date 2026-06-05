@@ -167,6 +167,7 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
     notas: cliente.notas || '',
     data_inicio: cliente.data_inicio || '',
     data_fechamento: (cliente as Pessoa & { data_fechamento?: string }).data_fechamento || '',
+    winner_contact_id: (cliente as Pessoa & { winner_contact_id?: string }).winner_contact_id || '',
     c1: cliente.c1,
     c2: cliente.c2,
     c3: cliente.c3,
@@ -197,6 +198,7 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         notas: form.notas || null,
         data_inicio: form.data_inicio || null,
         data_fechamento: (form as typeof form & { data_fechamento?: string }).data_fechamento || null,
+        winner_contact_id: (form as typeof form & { winner_contact_id?: string }).winner_contact_id || null,
         c1: form.c1, c2: form.c2, c3: form.c3, c4: form.c4,
         patrimonio: parseMoeda(form.patrimonio),
         renda_mensal: parseMoeda(form.renda_mensal),
@@ -252,6 +254,15 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           value={(form as typeof form & { data_fechamento?: string }).data_fechamento || ''}
           onChange={e => setForm({ ...form, ...{ data_fechamento: e.target.value } })}
           style={input}
+        />
+      </Field>
+
+      <Field label="ID do contato no W1nner">
+        <input
+          value={(form as typeof form & { winner_contact_id?: string }).winner_contact_id || ''}
+          onChange={e => setForm({ ...form, ...{ winner_contact_id: e.target.value } })}
+          style={input}
+          placeholder="Ex: 1422308 (número do contato no W1nner)"
         />
       </Field>
 
@@ -673,13 +684,61 @@ function FormReuniao({
   const [apoliceFile, setApoliceFile] = useState<File | null>(null);
   const [apoliceNome, setApoliceNome] = useState(reuniao?.apolice_nome || '');
   const [uploadandoApolice, setUploadandoApolice] = useState(false);
+  const [horaInicio, setHoraInicio] = useState('10:00');
+  const [horaFim, setHoraFim] = useState('11:00');
   const [saving, setSaving] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [lanandoWinner, setLanandoWinner] = useState(false);
+  const [criandoCalendar, setCriandoCalendar] = useState(false);
+  const [msgWinner, setMsgWinner] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [msgCalendar, setMsgCalendar] = useState<{ ok: boolean; texto: string } | null>(null);
   const [erro, setErro] = useState('');
   const apoliceInputRef = React.useRef<HTMLInputElement>(null);
 
   const temProduto = ['c2', 'c3', 'c4'].includes(tipo);
   const produtoLabel = PRODUTO_POR_REUNIAO[tipo as TipoReuniao];
+
+  const lancarWinner = async (winnerContactId?: string) => {
+    setLanandoWinner(true); setMsgWinner(null);
+    try {
+      const dataFim = dataReuniao; // mesmo dia
+      const res = await fetch('/api/winner/agendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo, dataInicio: dataReuniao, horaInicio, dataFim, horaFim,
+          winnerContactId: winnerContactId || undefined,
+          descricao: transcricao ? transcricao.slice(0, 200) : undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) { setMsgWinner({ ok: true, texto: `✅ Lançado no W1nner${json.eventId ? ` (ID: ${json.eventId})` : ''}` }); }
+      else { setMsgWinner({ ok: false, texto: json.message || json.error || 'Erro ao lançar no W1nner.' }); }
+    } catch { setMsgWinner({ ok: false, texto: 'Erro de conexão.' }); }
+    setLanandoWinner(false);
+  };
+
+  const criarCalendar = async (clienteEmail?: string, clienteNome?: string) => {
+    setCriandoCalendar(true); setMsgCalendar(null);
+    try {
+      const startIso = `${dataReuniao}T${horaInicio}:00-03:00`;
+      const endIso   = `${dataReuniao}T${horaFim}:00-03:00`;
+      const res = await fetch('/api/calendar/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary: `${tipo.toUpperCase()} — ${clienteNome || 'Cliente'}`,
+          description: transcricao || undefined,
+          startIso, endIso,
+          attendeeEmails: clienteEmail ? [clienteEmail] : [],
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) { setMsgCalendar({ ok: true, texto: '📅 Evento criado no Google Calendar!' }); }
+      else { setMsgCalendar({ ok: false, texto: json.message || json.error || 'Erro ao criar no Calendar.' }); }
+    } catch { setMsgCalendar({ ok: false, texto: 'Erro de conexão.' }); }
+    setCriandoCalendar(false);
+  };
 
   const gerarRelatorio = async () => {
     if (transcricao.trim().length < 50) { setErro('Cole a transcrição completa antes de gerar.'); return; }
@@ -768,7 +827,7 @@ function FormReuniao({
         {reuniao ? 'Editar reunião' : 'Nova reunião'}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <Field label="Tipo" flex>
           <select value={tipo} onChange={e => setTipo(e.target.value as TipoReuniao)} style={input}>
             {TIPOS_REUNIAO.map(t => (
@@ -778,6 +837,12 @@ function FormReuniao({
         </Field>
         <Field label="Data" flex>
           <input type="date" value={dataReuniao} onChange={e => setDataReuniao(e.target.value)} style={input} />
+        </Field>
+        <Field label="Início">
+          <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} style={{ ...input, width: 90 }} />
+        </Field>
+        <Field label="Fim">
+          <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} style={{ ...input, width: 90 }} />
         </Field>
       </div>
 
@@ -889,9 +954,42 @@ function FormReuniao({
         </div>
       )}
 
+      {/* Botões de integração */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+        <button
+          onClick={async () => {
+            const { data: p } = await supabase.from('pessoas').select('winner_contact_id, email, nome').eq('id', pessoaId).single();
+            lancarWinner((p as { winner_contact_id?: string })?.winner_contact_id || undefined);
+          }}
+          disabled={lanandoWinner}
+          style={{ ...btnGhost, fontSize: 12.5, opacity: lanandoWinner ? 0.6 : 1 }}
+          title="Lança o compromisso no W1nner"
+        >
+          {lanandoWinner ? '⏳ Lançando...' : '🏆 Lançar no W1nner'}
+        </button>
+        <button
+          onClick={async () => {
+            const { data: p } = await supabase.from('pessoas').select('email, nome').eq('id', pessoaId).single();
+            criarCalendar(p?.email || undefined, p?.nome || undefined);
+          }}
+          disabled={criandoCalendar}
+          style={{ ...btnGhost, fontSize: 12.5, opacity: criandoCalendar ? 0.6 : 1 }}
+          title="Cria o evento no Google Calendar"
+        >
+          {criandoCalendar ? '⏳ Criando...' : '📅 Criar no Google Calendar'}
+        </button>
+      </div>
+
+      {msgWinner && (
+        <div style={{ ...( msgWinner.ok ? successBox : errorBox), marginTop: 8 }}>{msgWinner.texto}</div>
+      )}
+      {msgCalendar && (
+        <div style={{ ...(msgCalendar.ok ? successBox : errorBox), marginTop: 4 }}>{msgCalendar.texto}</div>
+      )}
+
       {erro && <div style={errorBox}>{erro}</div>}
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button onClick={onCancel} style={btnGhost}>Cancelar</button>
         <button onClick={salvar} disabled={saving || uploadandoApolice} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
           {saving ? 'Salvando...' : 'Salvar reunião'}
