@@ -18,6 +18,7 @@ import Atencao from './secoes/Atencao';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
 import Produtividade from './secoes/Produtividade';
+import CentralNotificacoes from './components/CentralNotificacoes';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
 import Equipe from './secoes/Equipe';
@@ -360,6 +361,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <CentralNotificacoes onAbrirPessoa={() => goToTab('clientes')} />
             <div className="dropdown-anchor">
               <button className="icon-btn" onClick={() => setOpenDropdown(openDropdown === 'mail' ? null : 'mail')} data-tip="Atividade recente">
                 <Icon name="mail" size={16} />

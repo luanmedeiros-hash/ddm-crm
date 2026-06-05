@@ -6,6 +6,7 @@ import type { Pessoa, ClienteStatus } from '@/lib/types';
 import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, PRODUTO_POR_REUNIAO, type TipoReuniao } from '@/lib/prompts-relatorio';
 import JornadaCliente from './JornadaCliente';
 import AbaAnexos from './AbaAnexos';
+import MensagensCliente from './MensagensCliente';
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface ReuniaoRow {
@@ -68,6 +69,7 @@ export default function PerfilCliente({
   onSaved: () => void;
 }) {
   const [aba, setAba] = useState<Aba>('info');
+  const [mostrarMensagens, setMostrarMensagens] = useState(false);
 
   // Fechar com ESC
   useEffect(() => {
@@ -94,7 +96,16 @@ export default function PerfilCliente({
                 {cliente.empresa && <span>🏢 {cliente.empresa}</span>}
               </div>
             </div>
-            <button onClick={onClose} style={btnClose}>✕</button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => setMostrarMensagens(true)}
+                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}
+                title="Modelos de mensagem"
+              >
+                💬 Mensagem
+              </button>
+              <button onClick={onClose} style={btnClose}>✕</button>
+            </div>
           </div>
 
           {/* Abas */}
@@ -132,6 +143,10 @@ export default function PerfilCliente({
           {aba === 'anexos'     && <AbaAnexos pessoaId={cliente.id} />}
         </div>
       </div>
+
+      {mostrarMensagens && (
+        <MensagensCliente cliente={cliente} onClose={() => setMostrarMensagens(false)} />
+      )}
     </>
   );
 }
@@ -660,6 +675,21 @@ function AbaReunioes({ pessoaId, userId }: { pessoaId: string; userId: string })
   );
 }
 
+// Próxima etapa da jornada e seu prazo (+10 dias) — cadência automática
+const PROXIMA_ETAPA: Record<string, { label: string; dias: number }> = {
+  analise: { label: 'C1 — Organização Financeira', dias: 10 },
+  c1:      { label: 'C2 — Seguro',                  dias: 10 },
+  c2:      { label: 'C3 — Previdência',             dias: 10 },
+  c3:      { label: 'C4 — Consórcio',               dias: 10 },
+  c4:      { label: 'Acompanhamento',               dias: 10 },
+};
+
+function addDiasISO(isoDate: string, dias: number): string {
+  const d = new Date(isoDate + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
 // ─── Formulário de reunião (nova ou editar) ───────────────────
 function FormReuniao({
   pessoaId,
@@ -818,6 +848,29 @@ function FormReuniao({
       }
     }
 
+    // Cadência automática: ao registrar uma nova reunião, cria o próximo
+    // passo da jornada (+10 dias) — sem duplicar se já existir pendente.
+    if (!reuniao?.id && dataReuniao) {
+      const prox = PROXIMA_ETAPA[tipo];
+      if (prox) {
+        const descricao = `Agendar ${prox.label}`;
+        const { data: existentes } = await supabase
+          .from('proximos_passos')
+          .select('id')
+          .eq('pessoa_id', pessoaId)
+          .eq('descricao', descricao)
+          .eq('feito', false);
+        if (!existentes || existentes.length === 0) {
+          await supabase.from('proximos_passos').insert({
+            pessoa_id: pessoaId,
+            user_id: user.id,
+            descricao,
+            data_prevista: addDiasISO(dataReuniao, prox.dias),
+          });
+        }
+      }
+    }
+
     onSaved();
   };
 
@@ -845,6 +898,13 @@ function FormReuniao({
           <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} style={{ ...input, width: 90 }} />
         </Field>
       </div>
+
+      {!reuniao?.id && PROXIMA_ETAPA[tipo] && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'var(--primary-100)', border: '1px solid var(--primary-200)', marginBottom: 12, fontSize: 12, color: 'var(--primary-bright)' }}>
+          <span>🔄</span>
+          <span>Ao salvar, um próximo passo <strong>"{`Agendar ${PROXIMA_ETAPA[tipo].label}`}"</strong> será criado para {addDiasISO(dataReuniao, PROXIMA_ETAPA[tipo].dias).split('-').reverse().join('/')}.</span>
+        </div>
+      )}
 
       <Field label="Transcrição">
         <textarea

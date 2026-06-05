@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { FEATURES } from '@/lib/features';
 import Icon from '@/components/Icon';
 import AgendaConsultor from '@/components/AgendaConsultor';
+import MinhaCarteira from './MinhaCarteira';
 import type { RegistroDaily } from '@/lib/types';
 
 const METAS_BASE: Record<string, number> = {
@@ -133,6 +134,9 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
             <div style={{ fontSize: 22, fontWeight: 800 }}>{aba === 'meta' ? progMeta : progReal}/11</div>
           </div>
         </div>
+
+        {/* Minha Carteira — visão do consultor */}
+        <MinhaCarteira />
 
         {/* Abas */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>

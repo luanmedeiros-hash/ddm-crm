@@ -50,7 +50,7 @@ export default function ShaderBackground() {
         // Canal R = azul, G = âmbar, B = slate suave
         vec3 colorR = vec3(0.29, 0.565, 0.784);   // #4a90c8 azul
         vec3 colorG = vec3(0.96, 0.62, 0.04); // #F59E0B âmbar
-        vec3 colorB = vec3(0.98, 0.97, 0.95); // #fbf9f4 creme
+        vec3 colorB = vec3(0.96, 0.97, 0.98); // #f5f7fa slate frio
 
         vec3 color = vec3(0.0);
         for(int j = 0; j < 3; j++){

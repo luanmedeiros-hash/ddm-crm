@@ -5,35 +5,41 @@
      PALETA — slate-900 (#0f172a) com base bege Donezo
      ======================================================== */
   :root{
-    --bg-page: #fbf9f4;          /* bege-claro mais quente */
+    /* Base neutra fria — cool slate, limpa e profissional */
+    --bg-page: #f5f7fa;          /* slate-50 levemente frio */
     --bg-card: #ffffff;
-    --bg-soft: #f7f3ea;
-    --bg-muted: #f0ead9;
-    --line: #ece6d5;
-    --line-2: #d9cfb0;
+    --bg-soft: #f1f4f8;
+    --bg-muted: #e7ecf3;
+    --line: #e5e9f0;
+    --line-2: #d2d9e4;
 
-    /* Slate-900 (cor primária) */
-    --primary: #4a90c8;
-    --primary-soft: #9a1010;     /* slate-800 */
-    --primary-bright: #5c0000;   /* slate-700 */
-    --primary-100: #fbeaea;      /* fundo bem clarinho */
-    --primary-200: #f0c8c8;
+    /* Azul primário (marca Baldada) */
+    --primary: #3d82bd;          /* azul mais confiante */
+    --primary-soft: #6ba6d6;     /* azul claro */
+    --primary-bright: #2f6da3;   /* azul profundo (hover) */
+    --primary-100: #eaf2fa;      /* fundo bem clarinho */
+    --primary-200: #cfe2f3;
 
-    --text: #2a1a1a;
-    --text-dim: #6b5050;
-    --muted: #8a7575;
-    --muted-2: #b39a9a;
+    /* Texto em slate (em vez de marrom) — leitura moderna */
+    --text: #18222f;             /* slate-900 suave */
+    --text-dim: #475569;         /* slate-600 */
+    --muted: #64748b;            /* slate-500 */
+    --muted-2: #94a3b8;          /* slate-400 */
 
-    --ok: #16a34a;
+    --ok: #15a34a;
     --warn: #d97706;
     --crit: #dc2626;
     --info: #2563eb;
     --gold: #F59E0B;
 
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04), 0 1px 1px rgba(15, 23, 42, .03);
-    --shadow-md: 0 4px 14px rgba(15, 23, 42, .06), 0 2px 4px rgba(15, 23, 42, .04);
-    --shadow-lg: 0 16px 40px rgba(15, 23, 42, .14), 0 4px 12px rgba(15, 23, 42, .08);
+    /* Sombras em camadas, tom slate — profundidade sutil e refinada */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04), 0 1px 3px rgba(15, 23, 42, .03);
+    --shadow-md: 0 2px 4px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .07);
+    --shadow-lg: 0 4px 12px rgba(15, 23, 42, .08), 0 24px 56px rgba(15, 23, 42, .16);
+    --radius: 12px;
   }
+
+  ::selection { background: var(--primary-200); color: var(--text); }
 
   /* ========================================================
      TEMA ESCURO — escopado no Modo Daily (slate-950 base)
@@ -100,11 +106,31 @@
     color: var(--text);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
-    font-feature-settings: "tnum" on, "lnum" on;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "tnum" on, "lnum" on, "cv11" on, "ss01" on;
+    text-rendering: optimizeLegibility;
   }
   body { margin: 0; min-height: 100vh; }
 
   .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+  /* Tipografia refinada — títulos com tracking negativo (premium) */
+  h1, h2, h3, h4 { letter-spacing: -0.02em; }
+
+  /* Foco acessível e elegante em toda a interface */
+  *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: none;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px var(--primary-100);
+  }
+
+  /* Transições suaves padrão para elementos interativos */
+  button, .nav-item, .active-item, a { transition: background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
 
   /* ========================================================
      LAYOUT GERAL
