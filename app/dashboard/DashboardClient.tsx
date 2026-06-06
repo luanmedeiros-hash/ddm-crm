@@ -19,6 +19,7 @@ import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
 import Produtividade from './secoes/Produtividade';
 import Funil from './secoes/Funil';
+import Metas from './secoes/Metas';
 import CentralNotificacoes from './components/CentralNotificacoes';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
@@ -44,6 +45,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   'modo-daily': { titulo: 'Modo Daily', sub: 'Revisão rápida da equipe, um a um.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
   contatos: { titulo: 'Leads', sub: 'Seus leads em lista ou no board de pipeline — arraste para mover.' },
+  metas: { titulo: 'Metas', sub: 'Metas mensais por consultor e previsão de fechamentos.' },
   produtividade: { titulo: 'Produtividade', sub: 'Carteira, reuniões e atividades por consultor no mês.' },
   equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
 };
@@ -566,6 +568,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
         {activeTab === 'clientes' && <Clientes />}
         {activeTab === 'contatos' && <Contatos />}
+        {activeTab === 'metas' && <Metas />}
         {activeTab === 'produtividade' && <Produtividade />}
         {activeTab === 'equipe' && <Equipe />}
       </main>
