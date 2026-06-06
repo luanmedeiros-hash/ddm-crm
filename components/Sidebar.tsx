@@ -32,6 +32,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'clientes', icon: 'star', label: 'Clientes', liderado: true },
   { key: 'contatos', icon: 'funnel', label: 'Leads', liderado: true },
   { key: 'atencao', icon: 'alert', label: 'Atenção' },
+  { key: 'funil', icon: 'funnel', label: 'Funil' },
   { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
   { key: 'produtividade', icon: 'rank', label: 'Produtividade', liderOnly: true },

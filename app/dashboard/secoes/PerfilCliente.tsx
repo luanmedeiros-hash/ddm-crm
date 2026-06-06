@@ -436,6 +436,79 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
           {saving ? 'Salvando...' : 'Salvar alterações'}
         </button>
       </div>
+
+      <HistoricoAlteracoes pessoaId={cliente.id} />
+    </div>
+  );
+}
+
+// ─── Histórico de alterações (audit log) ──────────────────────
+interface AuditRow { id: string; changed_by: string | null; campo: string; de: string | null; para: string | null; created_at: string }
+
+function HistoricoAlteracoes({ pessoaId }: { pessoaId: string }) {
+  const [rows, setRows] = useState<AuditRow[]>([]);
+  const [nomes, setNomes] = useState<Record<string, string>>({});
+  const [aberto, setAberto] = useState(false);
+  const [carregado, setCarregado] = useState(false);
+
+  const carregar = useCallback(async () => {
+    const { data } = await supabase
+      .from('audit_log')
+      .select('id, changed_by, campo, de, para, created_at')
+      .eq('pessoa_id', pessoaId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    const lista = (data as AuditRow[]) || [];
+    setRows(lista);
+    const ids = [...new Set(lista.map(r => r.changed_by).filter(Boolean))] as string[];
+    if (ids.length) {
+      const { data: profs } = await supabase.from('profiles').select('id, nome').in('id', ids);
+      const map: Record<string, string> = {};
+      (profs || []).forEach((p: { id: string; nome: string }) => { map[p.id] = p.nome; });
+      setNomes(map);
+    }
+    setCarregado(true);
+  }, [pessoaId]);
+
+  const toggle = () => {
+    setAberto(a => !a);
+    if (!carregado) carregar();
+  };
+
+  function descreve(r: AuditRow): string {
+    if (r.campo === 'status') return `Status: ${r.de || '—'} → ${r.para || '—'}`;
+    if (r.campo === 'fase') return `Fase: ${r.de || '—'} → ${r.para || '—'}`;
+    if (r.campo === 'etapa') return `Reunião registrada: ${TIPO_REUNIAO_LABEL[r.para as TipoReuniao] || r.para}`;
+    return `${r.campo}: ${r.para}`;
+  }
+
+  return (
+    <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+      <button onClick={toggle} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+        🕓 Histórico de alterações {aberto ? '▲' : '▼'}
+      </button>
+
+      {aberto && (
+        <div style={{ marginTop: 10 }}>
+          {!carregado ? (
+            <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Carregando...</div>
+          ) : rows.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Nenhuma alteração registrada ainda.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {rows.map(r => (
+                <div key={r.id} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text)', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ flex: 1 }}>{descreve(r)}</span>
+                  <span style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                    {r.changed_by && nomes[r.changed_by] ? `${nomes[r.changed_by].split(' ')[0]} · ` : ''}
+                    {new Date(r.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

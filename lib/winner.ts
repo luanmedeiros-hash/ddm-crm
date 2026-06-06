@@ -213,7 +213,23 @@ export async function winnerListarContatos(sessionCookie: string): Promise<{ id:
   if (!page.ok) return [];
   const html = await page.text();
 
-  // Extrai options do select contact_id
-  const matches = [...html.matchAll(/<option value="(\d+)">([^<]+)<\/option>/g)];
-  return matches.map(m => ({ id: m[1], nome: m[2].trim() }));
+  // Isola SOMENTE o <select name="calendar_event[contact_id]"> (contatos do consultor),
+  // ignorando os selects de consultor/escritório/sala.
+  const selIdx = html.indexOf('calendar_event[contact_id]');
+  if (selIdx === -1) return [];
+  const selStart = html.indexOf('>', selIdx);
+  const selEnd = html.indexOf('</select>', selStart);
+  const bloco = html.slice(selStart, selEnd === -1 ? undefined : selEnd);
+
+  const matches = [...bloco.matchAll(/<option value="(\d+)"[^>]*>([^<]+)<\/option>/g)];
+  // Remove duplicados por id
+  const vistos = new Set<string>();
+  const out: { id: string; nome: string }[] = [];
+  for (const m of matches) {
+    if (vistos.has(m[1])) continue;
+    vistos.add(m[1]);
+    out.push({ id: m[1], nome: m[2].trim() });
+  }
+  out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return out;
 }

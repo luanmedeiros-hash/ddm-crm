@@ -18,6 +18,7 @@ import Atencao from './secoes/Atencao';
 import ModoDaily from './secoes/ModoDaily';
 import Agenda from './secoes/Agenda';
 import Produtividade from './secoes/Produtividade';
+import Funil from './secoes/Funil';
 import CentralNotificacoes from './components/CentralNotificacoes';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
@@ -36,6 +37,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   dashboard: { titulo: 'Dashboard', sub: 'Acompanhe o funil consultivo da equipe em tempo real.' },
   conversao: { titulo: 'Conversão', sub: 'Análise do funil de conversão da equipe.' },
   atencao: { titulo: 'Atenção', sub: 'Alertas, Big Points e Bloqueios da equipe.' },
+  funil: { titulo: 'Funil', sub: 'Conversão entre etapas, tempo na jornada e clientes estagnados.' },
   ranking: { titulo: 'Ranking', sub: 'Classificação dos consultores no período.' },
   historico: { titulo: 'Histórico', sub: 'Evolução dos registros ao longo do tempo.' },
   agenda: { titulo: 'Agenda', sub: 'Seus eventos sincronizados do Google Calendar.' },
@@ -557,6 +559,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'conversao' && <Conversao filtered={filtered} />}
         {activeTab === 'atencao' && <Atencao filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} consultores={listaConsultores} onSelect={setSelectedConsultor} />}
+        {activeTab === 'funil' && <Funil isLider={isLider} />}
         {activeTab === 'ranking' && <Ranking filtered={filtered} todosRegs={registros} range={range} onSelect={setSelectedConsultor} consultores={listaConsultores} />}
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}

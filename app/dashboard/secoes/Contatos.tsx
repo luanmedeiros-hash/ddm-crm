@@ -293,62 +293,160 @@ export default function Contatos() {
 }
 
 // ─── Modal novo lead ──────────────────────────────────────────
+interface WinnerContato { id: string; nome: string }
+
 function ModalNovoLead({ statusInicial, onClose, onSaved }: { statusInicial: ContatoStatus; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ nome: '', telefone: '', empresa: '', origem: '', status: statusInicial, proximo_contato: '' });
+  const [form, setForm] = useState({ telefone: '', empresa: '', origem: '', status: statusInicial, proximo_contato: '' });
+  const [contatos, setContatos] = useState<WinnerContato[]>([]);
+  const [winnerSel, setWinnerSel] = useState<WinnerContato | null>(null);
+  const [busca, setBusca] = useState('');
+  const [estado, setEstado] = useState<'carregando' | 'ok' | 'desconectado' | 'erro'>('carregando');
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
 
+  // Carrega os contatos do W1nner do consultor (somente os "travados" para ele)
+  const carregarContatos = useCallback(async () => {
+    setEstado('carregando'); setErro('');
+    try {
+      const res = await fetch('/api/winner/contatos');
+      if (res.status === 403) { setEstado('desconectado'); return; }
+      const json = await res.json();
+      if (json.ok) { setContatos(json.contatos || []); setEstado('ok'); }
+      else { setEstado('erro'); setErro(json.error || 'Erro ao buscar contatos do W1nner.'); }
+    } catch { setEstado('erro'); setErro('Falha de conexão com o W1nner.'); }
+  }, []);
+
+  useEffect(() => { carregarContatos(); }, [carregarContatos]);
+
+  const filtrados = busca
+    ? contatos.filter(c => c.nome.toLowerCase().includes(busca.toLowerCase())).slice(0, 30)
+    : contatos.slice(0, 30);
+
   const salvar = async () => {
-    if (!form.nome.trim()) { setErro('Nome é obrigatório.'); return; }
-    setSaving(true);
+    if (!winnerSel) { setErro('Selecione um contato do W1nner.'); return; }
+    setSaving(true); setErro('');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setErro('Sessão expirada.'); setSaving(false); return; }
+
+    // Dedup: o contato já existe no CRM?
+    const { data: jaExiste } = await supabase
+      .from('pessoas')
+      .select('id, fase')
+      .eq('winner_contact_id', winnerSel.id)
+      .maybeSingle();
+    if (jaExiste) {
+      setErro('Este contato já está cadastrado no CRM.');
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase.from('pessoas').insert({
-      nome: form.nome.trim(), telefone: form.telefone || null,
-      empresa: form.empresa || null, origem: form.origem || null,
-      status: form.status, proximo_contato: form.proximo_contato || null,
+      nome: winnerSel.nome,
+      winner_contact_id: winnerSel.id,
+      telefone: form.telefone || null,
+      empresa: form.empresa || null,
+      origem: form.origem || null,
+      status: form.status,
+      proximo_contato: form.proximo_contato || null,
       fase: 'lead', user_id: user.id, c1: false, c2: false, c3: false, c4: false,
     });
-    if (error) { setErro(error.message); setSaving(false); }
-    else { onSaved(); }
+    if (error) {
+      setErro(error.code === '23505' ? 'Este contato já está cadastrado no CRM.' : error.message);
+      setSaving(false);
+    } else { onSaved(); }
   };
 
   return (
     <div onClick={onClose} style={overlay}>
       <div onClick={e => e.stopPropagation()} style={modalBox}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Novo lead</div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Field label="Nome *" flex>
-            <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} style={input} autoFocus />
-          </Field>
-          <Field label="Status" flex>
-            <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as ContatoStatus })} style={input}>
-              {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-            </select>
-          </Field>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Novo lead</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          O contato precisa estar cadastrado no <strong>W1nner</strong> primeiro.
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Field label="Telefone" flex>
-            <input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} style={input} placeholder="(00) 00000-0000" />
-          </Field>
-          <Field label="Empresa" flex>
-            <input value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} style={input} />
-          </Field>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Field label="Origem" flex>
-            <input value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} style={input} placeholder="Indicação, evento..." />
-          </Field>
-          <Field label="Próximo contato" flex>
-            <input type="date" value={form.proximo_contato} onChange={e => setForm({ ...form, proximo_contato: e.target.value })} style={input} />
-          </Field>
-        </div>
-        {erro && <div style={errorBox}>{erro}</div>}
+
+        {estado === 'carregando' && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Carregando contatos do W1nner...</div>
+        )}
+
+        {estado === 'desconectado' && (
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.3)', color: '#b45309', fontSize: 13, lineHeight: 1.5 }}>
+            Conecte sua conta W1nner na aba <strong>Equipe</strong> para cadastrar leads.
+          </div>
+        )}
+
+        {estado === 'erro' && (
+          <div style={errorBox}>{erro || 'Erro ao carregar contatos.'} <button onClick={carregarContatos} style={{ marginLeft: 6, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}>Tentar de novo</button></div>
+        )}
+
+        {estado === 'ok' && (<>
+          {/* Seleção do contato W1nner */}
+          {winnerSel ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, background: 'var(--primary-100)', border: '1px solid var(--primary-200)', marginBottom: 12 }}>
+              <span style={{ fontSize: 16 }}>🏆</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{winnerSel.nome}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>W1nner ID: {winnerSel.id}</div>
+              </div>
+              <button onClick={() => setWinnerSel(null)} style={{ ...btnSmall, color: 'var(--muted)' }}>Trocar</button>
+            </div>
+          ) : (
+            <div style={{ marginBottom: 12 }}>
+              <input
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar contato no W1nner..."
+                style={{ ...input, marginBottom: 6 }}
+                autoFocus
+              />
+              <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 9 }}>
+                {filtrados.length === 0 ? (
+                  <div style={{ padding: 16, textAlign: 'center', color: 'var(--muted)', fontSize: 12.5 }}>
+                    {busca ? 'Nenhum contato encontrado.' : 'Nenhum contato no W1nner.'}
+                    <div style={{ marginTop: 4 }}>
+                      <button onClick={carregarContatos} style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}>↻ Recarregar</button>
+                    </div>
+                  </div>
+                ) : filtrados.map(c => (
+                  <button key={c.id} onClick={() => { setWinnerSel(c); setBusca(''); }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', borderBottom: '1px solid var(--line)', background: 'transparent', cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                    {c.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {winnerSel && (<>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Field label="Status" flex>
+                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as ContatoStatus })} style={input}>
+                  {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                </select>
+              </Field>
+              <Field label="Telefone" flex>
+                <input value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} style={input} placeholder="(00) 00000-0000" />
+              </Field>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Field label="Origem" flex>
+                <input value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} style={input} placeholder="Indicação, evento..." />
+              </Field>
+              <Field label="Próximo contato" flex>
+                <input type="date" value={form.proximo_contato} onChange={e => setForm({ ...form, proximo_contato: e.target.value })} style={input} />
+              </Field>
+            </div>
+          </>)}
+
+          {erro && <div style={errorBox}>{erro}</div>}
+        </>)}
+
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
           <button onClick={onClose} style={btnGhost}>Cancelar</button>
-          <button onClick={salvar} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Salvando...' : 'Adicionar'}
-          </button>
+          {estado === 'ok' && (
+            <button onClick={salvar} disabled={saving || !winnerSel} style={{ ...btnPrimary, opacity: (saving || !winnerSel) ? 0.6 : 1 }}>
+              {saving ? 'Salvando...' : 'Adicionar'}
+            </button>
+          )}
         </div>
       </div>
     </div>
