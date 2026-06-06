@@ -7,6 +7,7 @@ import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, PRODUTO_POR_REUNIAO, type TipoReunia
 import JornadaCliente from './JornadaCliente';
 import AbaAnexos from './AbaAnexos';
 import MensagensCliente from './MensagensCliente';
+import AgendarReuniao from './AgendarReuniao';
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface ReuniaoRow {
@@ -70,6 +71,7 @@ export default function PerfilCliente({
 }) {
   const [aba, setAba] = useState<Aba>('info');
   const [mostrarMensagens, setMostrarMensagens] = useState(false);
+  const [mostrarAgendar, setMostrarAgendar] = useState(false);
 
   // Fechar com ESC
   useEffect(() => {
@@ -97,6 +99,13 @@ export default function PerfilCliente({
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => setMostrarAgendar(true)}
+                style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap' }}
+                title="Agendar reunião"
+              >
+                📅 Agendar
+              </button>
               <button
                 onClick={() => setMostrarMensagens(true)}
                 style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}
@@ -148,6 +157,9 @@ export default function PerfilCliente({
 
       {mostrarMensagens && (
         <MensagensCliente cliente={cliente} onClose={() => setMostrarMensagens(false)} />
+      )}
+      {mostrarAgendar && (
+        <AgendarReuniao cliente={cliente} onClose={() => setMostrarAgendar(false)} />
       )}
     </>
   );
@@ -746,7 +758,7 @@ function AbaReunioes({ pessoaId, userId }: { pessoaId: string; userId: string })
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ fontSize: 13, color: 'var(--muted)' }}>{reunioes.length} reunião{reunioes.length !== 1 ? 'ões' : ''} registrada{reunioes.length !== 1 ? 's' : ''}</div>
-        <button onClick={() => setNovaForm(true)} style={btnPrimary}>+ Nova reunião</button>
+        <button onClick={() => setNovaForm(true)} style={btnPrimary}>+ Registrar reunião</button>
       </div>
 
       {loading ? (
@@ -754,7 +766,7 @@ function AbaReunioes({ pessoaId, userId }: { pessoaId: string; userId: string })
       ) : reunioes.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
           Nenhuma reunião registrada ainda.<br />
-          <span style={{ fontSize: 12 }}>Clique em "+ Nova reunião" para começar.</span>
+          <span style={{ fontSize: 12 }}>Use "Registrar reunião" depois que a reunião acontecer. Para marcar uma futura, use 📅 Agendar.</span>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -847,61 +859,13 @@ function FormReuniao({
   const [apoliceFile, setApoliceFile] = useState<File | null>(null);
   const [apoliceNome, setApoliceNome] = useState(reuniao?.apolice_nome || '');
   const [uploadandoApolice, setUploadandoApolice] = useState(false);
-  const [horaInicio, setHoraInicio] = useState('10:00');
-  const [horaFim, setHoraFim] = useState('11:00');
   const [saving, setSaving] = useState(false);
   const [gerando, setGerando] = useState(false);
-  const [lanandoWinner, setLanandoWinner] = useState(false);
-  const [criandoCalendar, setCriandoCalendar] = useState(false);
-  const [msgWinner, setMsgWinner] = useState<{ ok: boolean; texto: string } | null>(null);
-  const [msgCalendar, setMsgCalendar] = useState<{ ok: boolean; texto: string } | null>(null);
   const [erro, setErro] = useState('');
   const apoliceInputRef = React.useRef<HTMLInputElement>(null);
 
   const temProduto = ['c2', 'c3', 'c4'].includes(tipo);
   const produtoLabel = PRODUTO_POR_REUNIAO[tipo as TipoReuniao];
-
-  const lancarWinner = async (winnerContactId?: string) => {
-    setLanandoWinner(true); setMsgWinner(null);
-    try {
-      const dataFim = dataReuniao; // mesmo dia
-      const res = await fetch('/api/winner/agendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo, dataInicio: dataReuniao, horaInicio, dataFim, horaFim,
-          winnerContactId: winnerContactId || undefined,
-          descricao: transcricao ? transcricao.slice(0, 200) : undefined,
-        }),
-      });
-      const json = await res.json();
-      if (json.ok) { setMsgWinner({ ok: true, texto: `✅ Lançado no W1nner${json.eventId ? ` (ID: ${json.eventId})` : ''}` }); }
-      else { setMsgWinner({ ok: false, texto: json.message || json.error || 'Erro ao lançar no W1nner.' }); }
-    } catch { setMsgWinner({ ok: false, texto: 'Erro de conexão.' }); }
-    setLanandoWinner(false);
-  };
-
-  const criarCalendar = async (clienteEmail?: string, clienteNome?: string) => {
-    setCriandoCalendar(true); setMsgCalendar(null);
-    try {
-      const startIso = `${dataReuniao}T${horaInicio}:00-03:00`;
-      const endIso   = `${dataReuniao}T${horaFim}:00-03:00`;
-      const res = await fetch('/api/calendar/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          summary: `${tipo.toUpperCase()} — ${clienteNome || 'Cliente'}`,
-          description: transcricao || undefined,
-          startIso, endIso,
-          attendeeEmails: clienteEmail ? [clienteEmail] : [],
-        }),
-      });
-      const json = await res.json();
-      if (json.ok) { setMsgCalendar({ ok: true, texto: '📅 Evento criado no Google Calendar!' }); }
-      else { setMsgCalendar({ ok: false, texto: json.message || json.error || 'Erro ao criar no Calendar.' }); }
-    } catch { setMsgCalendar({ ok: false, texto: 'Erro de conexão.' }); }
-    setCriandoCalendar(false);
-  };
 
   const gerarRelatorio = async () => {
     if (transcricao.trim().length < 50) { setErro('Cole a transcrição completa antes de gerar.'); return; }
@@ -1009,8 +973,11 @@ function FormReuniao({
 
   return (
     <div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 16 }}>
-        {reuniao ? 'Editar reunião' : 'Nova reunião'}
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+        {reuniao ? 'Editar reunião' : 'Registrar reunião'}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+        Registre uma reunião que já aconteceu. Para marcar uma futura, use 📅 Agendar.
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -1023,12 +990,6 @@ function FormReuniao({
         </Field>
         <Field label="Data" flex>
           <input type="date" value={dataReuniao} onChange={e => setDataReuniao(e.target.value)} style={input} />
-        </Field>
-        <Field label="Início">
-          <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} style={{ ...input, width: 90 }} />
-        </Field>
-        <Field label="Fim">
-          <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} style={{ ...input, width: 90 }} />
         </Field>
       </div>
 
@@ -1147,40 +1108,7 @@ function FormReuniao({
         </div>
       )}
 
-      {/* Botões de integração */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-        <button
-          onClick={async () => {
-            const { data: p } = await supabase.from('pessoas').select('winner_contact_id, email, nome').eq('id', pessoaId).single();
-            lancarWinner((p as { winner_contact_id?: string })?.winner_contact_id || undefined);
-          }}
-          disabled={lanandoWinner}
-          style={{ ...btnGhost, fontSize: 12.5, opacity: lanandoWinner ? 0.6 : 1 }}
-          title="Lança o compromisso no W1nner"
-        >
-          {lanandoWinner ? '⏳ Lançando...' : '🏆 Lançar no W1nner'}
-        </button>
-        <button
-          onClick={async () => {
-            const { data: p } = await supabase.from('pessoas').select('email, nome').eq('id', pessoaId).single();
-            criarCalendar(p?.email || undefined, p?.nome || undefined);
-          }}
-          disabled={criandoCalendar}
-          style={{ ...btnGhost, fontSize: 12.5, opacity: criandoCalendar ? 0.6 : 1 }}
-          title="Cria o evento no Google Calendar"
-        >
-          {criandoCalendar ? '⏳ Criando...' : '📅 Criar no Google Calendar'}
-        </button>
-      </div>
-
-      {msgWinner && (
-        <div style={{ ...( msgWinner.ok ? successBox : errorBox), marginTop: 8 }}>{msgWinner.texto}</div>
-      )}
-      {msgCalendar && (
-        <div style={{ ...(msgCalendar.ok ? successBox : errorBox), marginTop: 4 }}>{msgCalendar.texto}</div>
-      )}
-
-      {erro && <div style={errorBox}>{erro}</div>}
+      {erro && <div style={{ ...errorBox, marginTop: 8 }}>{erro}</div>}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button onClick={onCancel} style={btnGhost}>Cancelar</button>

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Pessoa, ContatoStatus } from '@/lib/types';
 import PerfilCliente from './PerfilCliente';
+import AgendarReuniao from './AgendarReuniao';
 
 // ─── Configuração de status ───────────────────────────────────
 const STATUS_LABEL: Record<ContatoStatus, string> = {
@@ -39,6 +40,7 @@ export default function Contatos() {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | ContatoStatus>('todos');
   const [busca, setBusca] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<Pessoa | null>(null);
+  const [agendarPara, setAgendarPara] = useState<Pessoa | null>(null);
   const [modalNovo, setModalNovo] = useState<ContatoStatus | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<ContatoStatus | null>(null);
@@ -184,6 +186,11 @@ export default function Contatos() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); setAgendarPara(c); }}
+                      style={{ ...btnSmall, color: 'var(--primary)', borderColor: 'var(--primary-200)' }}
+                      title="Agendar reunião"
+                    >📅</button>
                     {c.status !== 'convertido' && (
                       <button
                         onClick={e => { e.stopPropagation(); converterEmCliente(c); }}
@@ -252,11 +259,18 @@ export default function Contatos() {
                         userSelect: 'none',
                       }}
                     >
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 3 }}>{p.nome}</div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 3, flex: 1 }}>{p.nome}</div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setAgendarPara(p); }}
+                          title="Agendar reunião"
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                        >📅</button>
+                      </div>
                       {p.empresa && <div style={{ fontSize: 11, color: 'var(--muted)' }}>🏢 {p.empresa}</div>}
                       {p.proximo_contato && (
                         <div style={{ fontSize: 10.5, marginTop: 4, fontWeight: 600, color: new Date(p.proximo_contato) < new Date() ? '#ef4444' : '#22c55e' }}>
-                          📅 {fmtData(p.proximo_contato)}
+                          ⏰ {fmtData(p.proximo_contato)}
                         </div>
                       )}
                     </div>
@@ -278,6 +292,11 @@ export default function Contatos() {
           onClose={() => setPerfilAberto(null)}
           onSaved={carregar}
         />
+      )}
+
+      {/* Agendar reunião direto do card */}
+      {agendarPara && (
+        <AgendarReuniao cliente={agendarPara} onClose={() => setAgendarPara(null)} />
       )}
 
       {/* Modal novo lead */}
