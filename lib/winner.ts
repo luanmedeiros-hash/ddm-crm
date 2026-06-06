@@ -96,7 +96,8 @@ export async function winnerLogin(email: string, password: string): Promise<stri
   if (loginRes.status !== 302) return null;
 
   applySetCookies(jar, getSetCookies(loginRes));
-  if (!jar.has('_session')) return null;
+  // O cookie de sessão do W1nner é "_w1_platform_session"
+  if (!jar.has('_w1_platform_session') && jar.size === 0) return null;
   return jarToHeader(jar);
 }
 
