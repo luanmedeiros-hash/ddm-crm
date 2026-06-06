@@ -19,5 +19,10 @@ export async function GET() {
   }
 
   const contatos = await winnerListarContatos(cookie);
+  if (contatos === null) {
+    // Sessão expirada — limpa e pede reconexão
+    await supabase.from('winner_sessions').delete().eq('user_id', user.id);
+    return NextResponse.json({ ok: false, error: 'winner_not_connected' }, { status: 403 });
+  }
   return NextResponse.json({ ok: true, contatos });
 }

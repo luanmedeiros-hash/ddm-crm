@@ -35,13 +35,13 @@ export async function POST(request: NextRequest) {
   const result = await winnerCriarEvento(cookie, body);
 
   if (!result.ok) {
-    // Se sessão expirou, limpa o registro para forçar novo login
-    if (result.error?.includes('expirado') || result.error?.includes('CSRF')) {
+    // Se sessão expirou/inválida, limpa o registro para forçar novo login
+    if (result.expirada) {
       await supabase.from('winner_sessions').delete().eq('user_id', user.id);
       return NextResponse.json({
         ok: false,
         error: 'winner_session_expired',
-        message: 'Sessão W1nner expirada. Reconecte sua conta nas configurações.',
+        message: 'Sessão W1nner expirada. Reconecte sua conta na aba Equipe.',
       }, { status: 403 });
     }
     return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
