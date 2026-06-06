@@ -201,7 +201,6 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
     status: (isLead ? (cliente.status || 'novo') : (cliente.status === 'inativo' ? 'inativo' : 'ativo')) as string,
     origem: cliente.origem || '',
     notas: cliente.notas || '',
-    pontos_ligacao: (cliente as Pessoa & { pontos_ligacao?: string }).pontos_ligacao || '',
     proximo_contato: cliente.proximo_contato || '',
     data_inicio: cliente.data_inicio || '',
     data_fechamento: (cliente as Pessoa & { data_fechamento?: string }).data_fechamento || '',
@@ -234,7 +233,6 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         status: form.status,
         origem: form.origem || null,
         notas: form.notas || null,
-        pontos_ligacao: form.pontos_ligacao || null,
         proximo_contato: form.proximo_contato || null,
         data_inicio: form.data_inicio || null,
         data_fechamento: (form as typeof form & { data_fechamento?: string }).data_fechamento || null,
@@ -320,28 +318,12 @@ function AbaInfo({ cliente, onSaved }: { cliente: Pessoa; onSaved: () => void })
         </>
       )}
 
-      {/* Pontos da ligação — foco do card de lead (Card de Ligação W1) */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={labelStyle}>📞 Pontos da ligação</span>
-          {!form.pontos_ligacao.trim() && (
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, pontos_ligacao: ROTEIRO_LIGACAO })}
-              style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >
-              + Inserir roteiro
-            </button>
-          )}
+      {isLead && (
+        <div style={{ padding: '9px 12px', borderRadius: 8, background: 'var(--primary-100)', border: '1px solid var(--primary-200)', fontSize: 12, color: 'var(--primary-bright)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span>📞</span>
+          <span>Registre os pontos da ligação na aba <strong>Atividades</strong> (tipo Ligação).</span>
         </div>
-        <textarea
-          value={form.pontos_ligacao}
-          onChange={e => setForm({ ...form, pontos_ligacao: e.target.value })}
-          rows={isLead ? 7 : 4}
-          style={{ ...input, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
-          placeholder="Principais pontos discutidos na ligação: perfil, objetivo / Big Point emocional, situação atual, agendamento da análise..."
-        />
-      </div>
+      )}
 
       <Field label="Notas">
         <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={3} style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Observações gerais..." />
@@ -555,16 +537,30 @@ function AbaAtividades({ pessoaId }: { pessoaId: string }) {
             ))}
           </div>
 
-          <Field label="Descrição *">
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+              <span style={labelStyle}>Descrição *</span>
+              {form.tipo === 'ligacao' && !form.descricao.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, descricao: ROTEIRO_LIGACAO })}
+                  style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  + Inserir roteiro da ligação
+                </button>
+              )}
+            </div>
             <textarea
               value={form.descricao}
               onChange={e => setForm({ ...form, descricao: e.target.value })}
-              rows={3}
-              style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }}
-              placeholder="O que aconteceu? Ex: Liguei para apresentar a proposta..."
+              rows={form.tipo === 'ligacao' ? 8 : 3}
+              style={{ ...input, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
+              placeholder={form.tipo === 'ligacao'
+                ? 'Pontos discutidos na ligação: perfil, objetivo / Big Point emocional, situação atual, agendamento da análise...'
+                : 'O que aconteceu? Ex: Liguei para apresentar a proposta...'}
               autoFocus
             />
-          </Field>
+          </div>
 
           <Field label="Data e hora">
             <input
