@@ -213,19 +213,70 @@ export default function Clientes() {
   );
 }
 
-// ─── Modal novo cliente (form simples) ───────────────────────
+// ─── Modal novo cliente (com jornada em andamento) ────────────
+const ETAPAS_JORNADA = [
+  { tipo: 'analise',        label: 'Análise',            cx: null  },
+  { tipo: 'c1',             label: 'C1 · Organização',   cx: 'c1' as const },
+  { tipo: 'c2',             label: 'C2 · Seguro',        cx: 'c2' as const },
+  { tipo: 'c3',             label: 'C3 · Previdência',   cx: 'c3' as const },
+  { tipo: 'c4',             label: 'C4 · Consórcio',     cx: 'c4' as const },
+  { tipo: 'acompanhamento', label: 'Acompanhamento',     cx: null  },
+] as const;
+
+// Próxima etapa da jornada (cadência +10 dias) — espelha PROXIMA_ETAPA do PerfilCliente
+const PROXIMA_DEPOIS: Record<string, { label: string; dias: number } | undefined> = {
+  analise: { label: 'C1 — Organização Financeira', dias: 10 },
+  c1:      { label: 'C2 — Seguro',                  dias: 10 },
+  c2:      { label: 'C3 — Previdência',             dias: 10 },
+  c3:      { label: 'C4 — Consórcio',               dias: 10 },
+  c4:      { label: 'Acompanhamento',               dias: 10 },
+};
+
+function addDiasIso(iso: string, dias: number): string {
+  const d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+interface EtapaForm { feito: boolean; data: string }
+
 function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({ nome: '', telefone: '', email: '', empresa: '', origem: '' });
+  const [dataFechamento, setDataFechamento] = useState('');
+  const [etapas, setEtapas] = useState<Record<string, EtapaForm>>(
+    Object.fromEntries(ETAPAS_JORNADA.map(e => [e.tipo, { feito: false, data: '' }]))
+  );
+  const [fin, setFin] = useState({ patrimonio: '', renda_mensal: '', perfil_risco: '', objetivo: '' });
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState('');
 
+  const setEtapa = (tipo: string, patch: Partial<EtapaForm>) =>
+    setEtapas(prev => ({ ...prev, [tipo]: { ...prev[tipo], ...patch } }));
+
+  const parseMoeda = (v: string): number | null => {
+    const n = Number(String(v).replace(/[^\d]/g, ''));
+    return n > 0 ? n : null;
+  };
+
   const salvar = async () => {
     if (!form.nome.trim()) { setErro('Nome é obrigatório.'); return; }
-    setSaving(true);
+
+    // Etapas marcadas como feitas precisam de data
+    const feitas = ETAPAS_JORNADA.filter(e => etapas[e.tipo].feito);
+    const semData = feitas.find(e => !etapas[e.tipo].data);
+    if (semData) { setErro(`Informe a data da etapa "${semData.label}".`); return; }
+
+    setSaving(true); setErro('');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setErro('Sessão expirada.'); setSaving(false); return; }
 
-    const { error } = await supabase.from('pessoas').insert({
+    // Flags C1–C4 a partir das etapas feitas
+    const cx = { c1: etapas.c1.feito, c2: etapas.c2.feito, c3: etapas.c3.feito, c4: etapas.c4.feito };
+    // Data de início: data da Análise, senão fechamento, senão hoje
+    const dataInicio = etapas.analise.data || dataFechamento || new Date().toISOString().slice(0, 10);
+
+    // 1) Cria o cliente
+    const { data: nova, error } = await supabase.from('pessoas').insert({
       nome: form.nome.trim(),
       telefone: form.telefone || null,
       email: form.email || null,
@@ -234,17 +285,53 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
       fase: 'cliente',
       status: 'ativo',
       user_id: user.id,
-      c1: false, c2: false, c3: false, c4: false,
-    });
+      data_inicio: dataInicio,
+      data_fechamento: dataFechamento || null,
+      patrimonio: parseMoeda(fin.patrimonio),
+      renda_mensal: parseMoeda(fin.renda_mensal),
+      perfil_risco: fin.perfil_risco || null,
+      objetivo: fin.objetivo || null,
+      ...cx,
+    }).select('id').single();
 
-    if (error) { setErro(error.message); setSaving(false); }
-    else { onSaved(); }
+    if (error || !nova) { setErro(error?.message || 'Erro ao criar cliente.'); setSaving(false); return; }
+    const pessoaId = (nova as { id: string }).id;
+
+    // 2) Registra as reuniões já realizadas (alimenta a Jornada)
+    if (feitas.length > 0) {
+      const rows = feitas.map(e => ({
+        pessoa_id: pessoaId,
+        user_id: user.id,
+        tipo: e.tipo,
+        data_reuniao: etapas[e.tipo].data,
+      }));
+      const { error: errReun } = await supabase.from('reunioes').insert(rows);
+      if (errReun) { setErro('Cliente criado, mas houve erro ao registrar as reuniões: ' + errReun.message); setSaving(false); return; }
+
+      // 3) Cadência: cria o próximo passo após a última etapa feita
+      const ordem = ETAPAS_JORNADA.map(e => e.tipo);
+      const ultima = [...feitas].sort((a, b) => ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo)).pop()!;
+      const prox = PROXIMA_DEPOIS[ultima.tipo];
+      if (prox && etapas[ultima.tipo].data) {
+        await supabase.from('proximos_passos').insert({
+          pessoa_id: pessoaId,
+          user_id: user.id,
+          descricao: `Agendar ${prox.label}`,
+          data_prevista: addDiasIso(etapas[ultima.tipo].data, prox.dias),
+        });
+      }
+    }
+
+    onSaved();
   };
 
   return (
     <div onClick={onClose} style={overlay}>
       <div onClick={e => e.stopPropagation()} style={modalBox}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Novo cliente</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Novo cliente</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Marque as consultorias já realizadas para registrar um cliente em andamento.
+        </div>
 
         <Field label="Nome *">
           <input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} style={inputStyle} placeholder="Nome do cliente" autoFocus />
@@ -265,6 +352,61 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
             <input value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} style={inputStyle} placeholder="Indicação, evento..." />
           </Field>
         </div>
+
+        {/* Jornada em andamento */}
+        <div style={secaoTitulo}>📍 Jornada — consultorias já realizadas</div>
+        <Field label="Data de fechamento (início da jornada)">
+          <input type="date" value={dataFechamento} onChange={e => setDataFechamento(e.target.value)} style={inputStyle} />
+        </Field>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {ETAPAS_JORNADA.map(e => {
+            const st = etapas[e.tipo];
+            return (
+              <div key={e.tipo} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 9, border: `1px solid ${st.feito ? 'var(--primary-200)' : 'var(--line)'}`, background: st.feito ? 'var(--primary-100)' : 'transparent' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                  <input type="checkbox" checked={st.feito} onChange={ev => setEtapa(e.tipo, { feito: ev.target.checked })} />
+                  {e.label}
+                </label>
+                {st.feito && (
+                  <input
+                    type="date"
+                    value={st.data}
+                    onChange={ev => setEtapa(e.tipo, { data: ev.target.value })}
+                    style={{ ...inputStyle, width: 150 }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Financeiro (opcional) */}
+        <div style={secaoTitulo}>💰 Financeiro (opcional)</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Field label="Patrimônio (R$)" flex>
+            <input value={fin.patrimonio} onChange={e => setFin({ ...fin, patrimonio: e.target.value })} style={inputStyle} placeholder="500000" inputMode="numeric" />
+          </Field>
+          <Field label="Renda mensal (R$)" flex>
+            <input value={fin.renda_mensal} onChange={e => setFin({ ...fin, renda_mensal: e.target.value })} style={inputStyle} placeholder="20000" inputMode="numeric" />
+          </Field>
+        </div>
+        <Field label="Perfil de risco">
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[{ v: 'conservador', l: 'Conservador' }, { v: 'moderado', l: 'Moderado' }, { v: 'arrojado', l: 'Arrojado' }].map(p => (
+              <button key={p.v} type="button"
+                onClick={() => setFin({ ...fin, perfil_risco: fin.perfil_risco === p.v ? '' : p.v })}
+                style={{ flex: 1, padding: '8px 4px', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
+                  border: `1px solid ${fin.perfil_risco === p.v ? 'var(--primary)' : 'var(--line)'}`,
+                  background: fin.perfil_risco === p.v ? 'var(--primary-100)' : 'transparent',
+                  color: fin.perfil_risco === p.v ? 'var(--primary)' : 'var(--muted)' }}>
+                {p.l}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Objetivo">
+          <input value={fin.objetivo} onChange={e => setFin({ ...fin, objetivo: e.target.value })} style={inputStyle} placeholder="Aposentadoria, proteção familiar..." />
+        </Field>
 
         {erro && <div style={errorBox}>{erro}</div>}
 
@@ -299,6 +441,7 @@ function Field({ label, children, flex }: { label: string; children: React.React
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.5px' };
+const secaoTitulo: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text)', margin: '18px 0 10px', paddingTop: 14, borderTop: '1px solid var(--line)' };
 const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' };
 const btnPrimary: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
 const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' };
