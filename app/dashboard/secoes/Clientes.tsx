@@ -13,6 +13,9 @@ const STATUS_LABEL: Record<ClienteStatus, string> = {
 
 const CHECK_LABELS = ['C1', 'C2', 'C3', 'C4'] as const;
 
+type SortKey = 'nome' | 'status' | 'empresa' | 'origem';
+type SortDir = 'asc' | 'desc';
+
 export default function Clientes() {
   const [clientes, setClientes] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,13 @@ export default function Clientes() {
   const [perfilAberto, setPerfilAberto] = useState<Pessoa | null>(null);
   const [modalNovo, setModalNovo] = useState(false);
   const [erro, setErro] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('nome');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const toggleSort = (k: SortKey) => {
+    if (k === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -37,12 +47,20 @@ export default function Clientes() {
   useEffect(() => { carregar(); }, [carregar]);
 
   const filtrados = useMemo(() => {
-    return clientes.filter(c => {
+    const q = busca.toLowerCase().trim();
+    const arr = clientes.filter(c => {
       const okStatus = filtroStatus === 'todos' || c.status === filtroStatus;
-      const okBusca = !busca || c.nome.toLowerCase().includes(busca.toLowerCase());
+      const okBusca = !q || [c.nome, c.email, c.telefone, c.empresa]
+        .some(v => (v || '').toLowerCase().includes(q));
       return okStatus && okBusca;
     });
-  }, [clientes, filtroStatus, busca]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return arr.sort((a, b) => {
+      const va = (a[sortKey] || '').toString().toLowerCase();
+      const vb = (b[sortKey] || '').toString().toLowerCase();
+      return va.localeCompare(vb, 'pt-BR') * dir;
+    });
+  }, [clientes, filtroStatus, busca, sortKey, sortDir]);
 
   const ativos = clientes.filter(c => c.status === 'ativo').length;
   const inativos = clientes.filter(c => c.status === 'inativo').length;
@@ -106,7 +124,7 @@ export default function Clientes() {
         <input
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          placeholder="Buscar por nome..."
+          placeholder="Buscar por nome, email, telefone ou empresa..."
           style={{ flex: 1, minWidth: 180, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', fontSize: 13 }}
         />
       </div>
@@ -121,35 +139,53 @@ export default function Clientes() {
           Nenhum cliente {filtroStatus !== 'todos' ? STATUS_LABEL[filtroStatus as ClienteStatus].toLowerCase() : ''} encontrado.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtrados.map(c => (
-            <div key={c.id} style={card} onClick={() => setPerfilAberto(c)}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.nome}</span>
-                  <span style={c.status === 'ativo' ? badgeAtivo : badgeInativo}>{STATUS_LABEL[c.status as ClienteStatus]}</span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  {c.telefone && <span>📞 {c.telefone}</span>}
-                  {c.email && <span>✉ {c.email}</span>}
-                  {c.empresa && <span>🏢 {c.empresa}</span>}
-                  {c.origem && <span>Origem: {c.origem}</span>}
-                </div>
-                {(c.c1 || c.c2 || c.c3 || c.c4) && (
-                  <div style={{ display: 'flex', gap: 5, marginTop: 6 }}>
-                    {CHECK_LABELS.map((lbl, i) => {
-                      const val = [c.c1, c.c2, c.c3, c.c4][i];
-                      return val ? <span key={lbl} style={chip}>{lbl}</span> : null;
-                    })}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--muted)' }}>Ver perfil →</span>
-                <button onClick={(e) => excluir(c, e)} style={btnDelete} title="Excluir">✕</button>
-              </div>
-            </div>
-          ))}
+        <div className="dt-wrap">
+          <table className="dt">
+            <thead>
+              <tr>
+                <Th label="Nome" k="nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <th>Contato</th>
+                <Th label="Empresa" k="empresa" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <Th label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <th>Consultorias</th>
+                <Th label="Origem" k="origem" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                <th style={{ textAlign: 'right' }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map(c => (
+                <tr key={c.id} onClick={() => setPerfilAberto(c)}>
+                  <td><span className="dt-name">{c.nome}</span></td>
+                  <td>
+                    <div className="dt-sub">
+                      {c.telefone && <div>📞 {c.telefone}</div>}
+                      {c.email && <div>✉ {c.email}</div>}
+                      {!c.telefone && !c.email && <span>—</span>}
+                    </div>
+                  </td>
+                  <td className="dt-sub">{c.empresa || '—'}</td>
+                  <td><span style={c.status === 'ativo' ? badgeAtivo : badgeInativo}>{STATUS_LABEL[c.status as ClienteStatus]}</span></td>
+                  <td>
+                    {(c.c1 || c.c2 || c.c3 || c.c4) ? (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {CHECK_LABELS.map((lbl, i) => {
+                          const val = [c.c1, c.c2, c.c3, c.c4][i];
+                          return val ? <span key={lbl} style={chip}>{lbl}</span> : null;
+                        })}
+                      </div>
+                    ) : <span className="dt-sub">—</span>}
+                  </td>
+                  <td className="dt-sub">{c.origem || '—'}</td>
+                  <td>
+                    <div className="dt-actions">
+                      <button className="dt-iconbtn" title="Ver perfil" onClick={(e) => { e.stopPropagation(); setPerfilAberto(c); }}>→</button>
+                      <button className="dt-iconbtn danger" title="Excluir" onClick={(e) => excluir(c, e)}>✕</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -243,6 +279,16 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
   );
 }
 
+function Th({ label, k, sortKey, sortDir, onSort }: { label: string; k: SortKey; sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void }) {
+  const active = sortKey === k;
+  return (
+    <th className="sortable" onClick={() => onSort(k)}>
+      {label}
+      <span className={`arrow${active ? ' active' : ''}`}>{active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+    </th>
+  );
+}
+
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
     <div style={{ marginBottom: 12, flex: flex ? 1 : undefined }}>
@@ -256,10 +302,8 @@ const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' };
 const btnPrimary: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
 const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' };
-const btnDelete: React.CSSProperties = { width: 28, height: 28, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 13, flexShrink: 0 };
 const pill: React.CSSProperties = { padding: '6px 12px', borderRadius: 999, border: '1px solid var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer' };
 const pillActive: React.CSSProperties = { ...pill, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' };
-const card: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--line)', cursor: 'pointer', transition: 'border-color .15s' };
 const badgeAtivo: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(34,160,90,.15)', color: '#1a8a4a' };
 const badgeInativo: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(120,120,120,.15)', color: 'var(--muted)' };
 const chip: React.CSSProperties = { fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: 'rgba(245,158,11,.15)', color: '#F59E0B' };
