@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { CalendarEventDB, Pessoa } from '@/lib/types';
 import { TIPOS_REUNIAO, TIPO_REUNIAO_LABEL, type TipoReuniao } from '@/lib/prompts-relatorio';
+import AgendarReuniao from './AgendarReuniao';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -451,6 +452,9 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
   const [modal, setModal] = useState<LinkState|null>(null);
   const [relModal, setRelModal] = useState<RelatorioState|null>(null);
   const [vista, setVista] = useState<'semana' | 'lista'>('semana');
+  const [picker, setPicker] = useState(false);
+  const [buscaPessoa, setBuscaPessoa] = useState('');
+  const [agendarPessoa, setAgendarPessoa] = useState<Pessoa | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -544,7 +548,10 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
               </button>
             ))}
           </div>
-          <button onClick={sync} disabled={syncing} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--line)', background:syncing?'var(--bg-soft)':'var(--primary)', color:syncing?'var(--muted)':'#fff', cursor:syncing?'not-allowed':'pointer', fontSize:12, fontWeight:700, display:'flex', gap:6, alignItems:'center' }}>
+          <button onClick={() => { setBuscaPessoa(''); setPicker(true); }} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--primary)', background:'var(--primary)', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, display:'flex', gap:6, alignItems:'center' }}>
+            📅 Agendar
+          </button>
+          <button onClick={sync} disabled={syncing} style={{ padding:'7px 14px', borderRadius:8, border:'1px solid var(--line)', background:syncing?'var(--bg-soft)':'var(--bg-card)', color:syncing?'var(--muted)':'var(--text)', cursor:syncing?'not-allowed':'pointer', fontSize:12, fontWeight:700, display:'flex', gap:6, alignItems:'center' }}>
             <span style={{ display:'inline-block', animation:syncing?'spin 1s linear infinite':'none' }}>🔄</span>
             {syncing ? 'Sincronizando...' : 'Sincronizar Google'}
           </button>
@@ -588,6 +595,50 @@ function ConsultorPanel({ userId, consultor, onToast }: { userId: string; consul
 
       {modal && <LinkModal s={modal} pessoas={pessoas} onChange={p => setModal(prev => prev ? {...prev,...p} : null)} onSave={saveLink} onClose={() => setModal(null)} />}
       {relModal && <RelatorioModal s={relModal} onChange={p => setRelModal(prev => prev ? {...prev,...p} : null)} onGerar={gerarRelatorio} onClose={() => setRelModal(null)} />}
+
+      {/* Picker de pessoa para agendar */}
+      {picker && (
+        <div onClick={() => setPicker(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'var(--bg-card)', borderRadius:14, padding:24, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,.3)', border:'1px solid var(--line)' }}>
+            <div style={{ fontSize:16, fontWeight:700, marginBottom:4, color:'var(--text)' }}>Agendar reunião</div>
+            <div style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>Escolha o cliente ou lead da reunião.</div>
+            <input
+              value={buscaPessoa}
+              onChange={e => setBuscaPessoa(e.target.value)}
+              placeholder="Buscar por nome..."
+              autoFocus
+              style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--text)', fontSize:13, boxSizing:'border-box', marginBottom:10 }}
+            />
+            <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid var(--line)', borderRadius:9 }}>
+              {pessoas
+                .filter(p => !buscaPessoa || p.nome.toLowerCase().includes(buscaPessoa.toLowerCase()))
+                .slice(0, 50)
+                .map(p => (
+                  <button key={p.id} onClick={() => { setAgendarPessoa(p); setPicker(false); }}
+                    style={{ display:'flex', alignItems:'center', gap:10, width:'100%', textAlign:'left', padding:'9px 12px', border:'none', borderBottom:'1px solid var(--line)', background:'transparent', cursor:'pointer', fontSize:13, color:'var(--text)' }}>
+                    <span>{p.fase === 'cliente' ? '👤' : '🌱'}</span>
+                    <span style={{ flex:1, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.nome}</span>
+                    <span style={{ fontSize:11, color:'var(--muted)' }}>{p.fase === 'cliente' ? 'Cliente' : 'Lead'}</span>
+                  </button>
+                ))}
+              {pessoas.filter(p => !buscaPessoa || p.nome.toLowerCase().includes(buscaPessoa.toLowerCase())).length === 0 && (
+                <div style={{ padding:16, textAlign:'center', color:'var(--muted)', fontSize:12.5 }}>Nenhuma pessoa encontrada.</div>
+              )}
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:14 }}>
+              <button onClick={() => setPicker(false)} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--line)', background:'transparent', color:'var(--text)', cursor:'pointer', fontSize:13 }}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {agendarPessoa && (
+        <AgendarReuniao
+          cliente={agendarPessoa}
+          onClose={() => setAgendarPessoa(null)}
+          onAgendado={() => { setAgendarPessoa(null); onToast('✓ Reunião agendada'); load(); }}
+        />
+      )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
