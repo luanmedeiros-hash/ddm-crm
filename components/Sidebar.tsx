@@ -33,7 +33,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'contatos', icon: 'funnel', label: 'Leads', liderado: true },
   { key: 'funil', icon: 'funnel', label: 'Funil' },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
-  { key: 'equipe', icon: 'team', label: 'Equipe', liderOnly: true },
+  { key: 'equipe', icon: 'team', label: 'Equipe & gestão', liderOnly: true },
 ];
 
 // Sub-abas agrupadas dentro de "Equipe" (reduz a poluição da lista lateral)

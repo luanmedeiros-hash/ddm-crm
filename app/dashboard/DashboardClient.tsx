@@ -48,7 +48,7 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   contatos: { titulo: 'Leads', sub: 'Seus leads em lista ou no board de pipeline — arraste para mover.' },
   metas: { titulo: 'Metas', sub: 'Metas mensais por consultor e previsão de fechamentos.' },
   produtividade: { titulo: 'Produtividade', sub: 'Carteira, reuniões e atividades por consultor no mês.' },
-  equipe: { titulo: 'Equipe', sub: 'Gerencie os membros da equipe e envie convites.' },
+  equipe: { titulo: 'Equipe & gestão', sub: 'Membros, atenção, ranking, metas e produtividade da equipe.' },
 };
 
 export default function DashboardClient({ registros, userEmail, userName, isLider, consultores }: Props) {
@@ -290,7 +290,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
       { key: 'historico', label: 'Histórico', emoji: '📈' },
       { key: 'metas', label: 'Metas', emoji: '🎯', liderOnly: true },
       { key: 'produtividade', label: 'Produtividade', emoji: '📋', liderOnly: true },
-      { key: 'equipe', label: 'Equipe', emoji: '👥', liderOnly: true },
+      { key: 'equipe', label: 'Equipe & gestão', emoji: '👥', liderOnly: true },
     ];
     return all.filter(n => (!n.flag || FEATURES[n.flag]) && (!n.liderOnly || isLider));
   }, [isLider]);
