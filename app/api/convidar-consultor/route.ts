@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
       nome: nome.trim(),
       role,
       consultor_nome: role === 'liderado' ? nome.trim() : null,
-      updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
 
     return NextResponse.json({ ok: true, status: 'updated', userId });
