@@ -31,6 +31,8 @@ function fmtData(iso: string | null) {
 }
 
 type View = 'lista' | 'board';
+type SortKey = 'nome' | 'status' | 'proximo_contato';
+type SortDir = 'asc' | 'desc';
 
 // ─── Componente principal ─────────────────────────────────────
 export default function Contatos() {
@@ -45,6 +47,13 @@ export default function Contatos() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<ContatoStatus | null>(null);
   const [erro, setErro] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('proximo_contato');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const toggleSort = (k: SortKey) => {
+    if (k === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('asc'); }
+  };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -60,11 +69,26 @@ export default function Contatos() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const filtrados = useMemo(() => contatos.filter(c => {
-    const okStatus = filtroStatus === 'todos' || c.status === filtroStatus;
-    const okBusca = !busca || c.nome.toLowerCase().includes(busca.toLowerCase());
-    return okStatus && okBusca;
-  }), [contatos, filtroStatus, busca]);
+  const filtrados = useMemo(() => {
+    const q = busca.toLowerCase().trim();
+    return contatos.filter(c => {
+      const okStatus = filtroStatus === 'todos' || c.status === filtroStatus;
+      const okBusca = !q || [c.nome, c.telefone, c.empresa]
+        .some(v => (v || '').toLowerCase().includes(q));
+      return okStatus && okBusca;
+    });
+  }, [contatos, filtroStatus, busca]);
+
+  const ordenados = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filtrados].sort((a, b) => {
+      const va = (a[sortKey] || '').toString().toLowerCase();
+      const vb = (b[sortKey] || '').toString().toLowerCase();
+      if (!va && vb) return 1;   // vazios sempre ao fim
+      if (va && !vb) return -1;
+      return va.localeCompare(vb, 'pt-BR') * dir;
+    });
+  }, [filtrados, sortKey, sortDir]);
 
   // Drag & drop (board)
   const moverPara = useCallback(async (id: string, novoStatus: ContatoStatus) => {
@@ -160,49 +184,60 @@ export default function Contatos() {
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Carregando...</div>
       ) : view === 'lista' ? (
         /* ── Vista Lista ── */
-        filtrados.length === 0 ? (
+        ordenados.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Nenhum lead encontrado.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-            {filtrados.map(c => {
-              const cfg = STATUS_CONFIG[c.status as ContatoStatus] || STATUS_CONFIG.novo;
-              return (
-                <div key={c.id} style={cardLista} onClick={() => setPerfilAberto(c)}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.nome}</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.fg }}>
-                        {cfg.emoji} {STATUS_LABEL[c.status as ContatoStatus]}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                      {c.telefone && <span>📞 {c.telefone}</span>}
-                      {c.empresa && <span>🏢 {c.empresa}</span>}
-                      {c.proximo_contato && (
-                        <span style={{ color: new Date(c.proximo_contato) < new Date() ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
-                          📅 {fmtData(c.proximo_contato)}
+          <div className="dt-wrap">
+            <table className="dt">
+              <thead>
+                <tr>
+                  <Th label="Nome" k="nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <th>Contato</th>
+                  <Th label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <Th label="Próximo contato" k="proximo_contato" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <th style={{ textAlign: 'right' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordenados.map(c => {
+                  const cfg = STATUS_CONFIG[c.status as ContatoStatus] || STATUS_CONFIG.novo;
+                  const atrasado = c.proximo_contato && new Date(c.proximo_contato) < new Date();
+                  return (
+                    <tr key={c.id} onClick={() => setPerfilAberto(c)}>
+                      <td><span className="dt-name">{c.nome}</span></td>
+                      <td>
+                        <div className="dt-sub">
+                          {c.telefone && <div>📞 {c.telefone}</div>}
+                          {c.empresa && <div>🏢 {c.empresa}</div>}
+                          {!c.telefone && !c.empresa && <span>—</span>}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: cfg.bg, color: cfg.fg, whiteSpace: 'nowrap' }}>
+                          {cfg.emoji} {STATUS_LABEL[c.status as ContatoStatus]}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <button
-                      onClick={e => { e.stopPropagation(); setAgendarPara(c); }}
-                      style={{ ...btnSmall, color: 'var(--primary)', borderColor: 'var(--primary-200)' }}
-                      title="Agendar reunião"
-                    >📅</button>
-                    {c.status !== 'convertido' && (
-                      <button
-                        onClick={e => { e.stopPropagation(); converterEmCliente(c); }}
-                        style={{ ...btnSmall, color: '#22c55e', borderColor: 'rgba(34,197,94,.3)' }}
-                        title="Converter em cliente"
-                      >→ Cliente</button>
-                    )}
-                    <button onClick={e => excluir(c, e)} style={btnDelete} title="Excluir">✕</button>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                      <td>
+                        {c.proximo_contato ? (
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: atrasado ? '#ef4444' : '#22c55e', whiteSpace: 'nowrap' }}>
+                            📅 {fmtData(c.proximo_contato)}
+                          </span>
+                        ) : <span className="dt-sub">—</span>}
+                      </td>
+                      <td>
+                        <div className="dt-actions">
+                          <button className="dt-iconbtn" title="Agendar reunião" onClick={e => { e.stopPropagation(); setAgendarPara(c); }}>📅</button>
+                          {c.status !== 'convertido' && (
+                            <button className="dt-iconbtn" style={{ color: '#22c55e', width: 'auto', padding: '0 8px' }} title="Converter em cliente" onClick={e => { e.stopPropagation(); converterEmCliente(c); }}>→ Cliente</button>
+                          )}
+                          <button className="dt-iconbtn danger" title="Excluir" onClick={e => excluir(c, e)}>✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )
       ) : (
@@ -472,6 +507,16 @@ function ModalNovoLead({ statusInicial, onClose, onSaved }: { statusInicial: Con
   );
 }
 
+function Th({ label, k, sortKey, sortDir, onSort }: { label: string; k: SortKey; sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void }) {
+  const active = sortKey === k;
+  return (
+    <th className="sortable" onClick={() => onSort(k)}>
+      {label}
+      <span className={`arrow${active ? ' active' : ''}`}>{active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+    </th>
+  );
+}
+
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
     <div style={{ marginBottom: 12, flex: flex ? 1 : undefined }}>
@@ -486,10 +531,8 @@ const input: React.CSSProperties = { width: '100%', padding: '9px 12px', borderR
 const btnPrimary: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' };
 const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--text)', fontSize: 13, cursor: 'pointer' };
 const btnSmall: React.CSSProperties = { padding: '4px 9px', borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' };
-const btnDelete: React.CSSProperties = { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--line)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 13, flexShrink: 0 };
 const pill: React.CSSProperties = { padding: '5px 11px', borderRadius: 999, border: '1px solid var(--line)', background: 'transparent', color: 'var(--muted)', fontSize: 12, cursor: 'pointer' };
 const pillActive: React.CSSProperties = { ...pill, background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' };
-const cardLista: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--line)', cursor: 'pointer' };
 const errorBox: React.CSSProperties = { padding: '9px 12px', background: 'rgba(74,144,200,.08)', border: '1px solid rgba(74,144,200,.2)', borderRadius: 8, color: '#4a90c8', fontSize: 12.5, marginBottom: 12 };
 const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
 const modalBox: React.CSSProperties = { background: 'var(--bg-card)', borderRadius: 14, padding: 24, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,.3)', border: '1px solid var(--line)' };
