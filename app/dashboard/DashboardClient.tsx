@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { calcConversoes, calcIndice, classificar, fmtData, fmtDataBR, regsValidos, intervaloUltimosDias, ultimosDiasUteis, tipoDia } from '@/lib/calculos';
 import { CONSULTORES, METRICAS_4 } from '@/lib/constants';
 import type { RegInterno } from '@/lib/types';
-import Sidebar, { type ConsultorAtivo } from '@/components/Sidebar'
+import Sidebar, { type ConsultorAtivo, EQUIPE_TABS } from '@/components/Sidebar'
 import Icon from '@/components/Icon';
 import Avatar from './components/Avatar';
 import SparkLine from './components/SparkLine';
@@ -580,6 +580,27 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* SUB-ABAS do grupo Equipe & gestão */}
+        {EQUIPE_TABS.includes(activeTab) && (
+          <div className="subtabs">
+            {([
+              { key: 'equipe', label: 'Membros', emoji: '👥' },
+              { key: 'atencao', label: 'Atenção', emoji: '⚠️' },
+              { key: 'ranking', label: 'Ranking', emoji: '🏆' },
+              { key: 'metas', label: 'Metas', emoji: '🎯' },
+              { key: 'produtividade', label: 'Produtividade', emoji: '📋' },
+            ]).map(t => (
+              <button
+                key={t.key}
+                className={`subtab ${activeTab === t.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(t.key)}
+              >
+                <span>{t.emoji}</span> {t.label}
+              </button>
+            ))}
           </div>
         )}
 

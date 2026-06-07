@@ -31,14 +31,13 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
   { key: 'clientes', icon: 'star', label: 'Clientes', liderado: true },
   { key: 'contatos', icon: 'funnel', label: 'Leads', liderado: true },
-  { key: 'atencao', icon: 'alert', label: 'Atenção' },
   { key: 'funil', icon: 'funnel', label: 'Funil' },
-  { key: 'ranking', icon: 'rank', label: 'Ranking', badge: { txt: 'Privado', cls: '' } },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
-  { key: 'metas', icon: 'star', label: 'Metas', liderOnly: true },
-  { key: 'produtividade', icon: 'rank', label: 'Produtividade', liderOnly: true },
   { key: 'equipe', icon: 'team', label: 'Equipe', liderOnly: true },
 ];
+
+// Sub-abas agrupadas dentro de "Equipe" (reduz a poluição da lista lateral)
+export const EQUIPE_TABS = ['equipe', 'atencao', 'ranking', 'metas', 'produtividade'];
 
 export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false }: Props) {
   const algumSelecionado = !!filtroConsultor;
@@ -77,7 +76,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
         {NAV_ITEMS.map(n => (
           <div
             key={n.key}
-            className={`nav-item ${activeTab === n.key ? 'active' : ''}`}
+            className={`nav-item ${(n.key === 'equipe' ? EQUIPE_TABS.includes(activeTab) : activeTab === n.key) ? 'active' : ''}`}
             onClick={() => onTabChange(n.key)}
           >
             <Icon name={n.icon} size={16} className="nav-icon" />
