@@ -7,6 +7,7 @@ import Avatar from '../components/Avatar';
 import StatusPill from '../components/StatusPill';
 import TrendArrow from '../components/TrendArrow';
 import FunnelDetail from '../components/FunnelDetail';
+import KpiBento from '../components/KpiBento';
 import Icon from '@/components/Icon';
 import Charts from '../Charts';
 import AgendaSemanal from '@/components/AgendaSemanal';
@@ -37,6 +38,8 @@ export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTa
 
   return (
     <>
+      <KpiBento filtered={filtered} todosRegs={todosRegs} consultores={consultores} onGoTab={onGoTab} />
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div className="card">
           <div className="card-head">
