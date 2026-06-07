@@ -1,0 +1,20 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3d82bd"/>
+      <stop offset="1" stop-color="#2f6da3"/>
+    </linearGradient>
+    <linearGradient id="pail" x1="20" y1="24" x2="44" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbe8f5"/>
+    </linearGradient>
+  </defs>
+  <!-- fundo arredondado -->
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <!-- alça do balde -->
+  <path d="M21 26c0-7 22-7 22 0" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- corpo do balde (trapézio) -->
+  <path d="M19 27h26l-3.2 22.5a3 3 0 0 1-3 2.5H25.2a3 3 0 0 1-3-2.5L19 27z" fill="url(#pail)"/>
+  <!-- aro superior -->
+  <rect x="17.5" y="24.5" width="29" height="5" rx="2.5" fill="#F59E0B"/>
+</svg>
