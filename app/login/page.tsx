@@ -41,10 +41,17 @@ function LoginInner() {
       <aside className="login-split-visual">
         <ShaderBackground />
         <div className="login-split-visual-content">
-          <div />
+          <div className="login-split-brand">
+            <span style={{ fontSize: 20 }}>🪣</span> CRM Baldada
+          </div>
           <div className="login-split-tagline">
-            <h1>A disciplina virou número.</h1>
-            <p>Cada daily preenchida é mais um passo na direção certa.</p>
+            <h1>A disciplina virou <span className="accent">número.</span></h1>
+            <p>Acompanhe o funil consultivo, a jornada de cada cliente e a performance da equipe — tudo em um só lugar.</p>
+            <div className="login-features">
+              <div className="login-feature"><span className="lf-ico">📊</span> Funil e métricas da equipe em tempo real</div>
+              <div className="login-feature"><span className="lf-ico">🗺️</span> Jornada do cliente da Análise ao Acompanhamento</div>
+              <div className="login-feature"><span className="lf-ico">📅</span> Agenda integrada ao Google Calendar</div>
+            </div>
           </div>
           <div className="login-split-footer">© 2026 Equipe Baldada · W1 Partner</div>
         </div>

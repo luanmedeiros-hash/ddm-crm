@@ -158,60 +158,37 @@ export default function JornadaCliente({
         </div>
       )}
 
-      {/* Timeline horizontal */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, overflowX: 'auto', paddingBottom: 4 }}>
-        {etapas.map((e, i) => (
-          <React.Fragment key={e.tipo}>
-            <EtapaItem etapa={e} />
-            {i < etapas.length - 1 && (
-              <div style={{
-                height: 2,
-                flex: 1,
-                minWidth: 12,
-                marginTop: 16,
-                background: e.status === 'feito' ? 'var(--primary)' : 'var(--line)',
-                transition: 'background .3s',
-              }} />
-            )}
-          </React.Fragment>
-        ))}
+      {/* Stepper vertical */}
+      <div>
+        {etapas.map(e => <EtapaItem key={e.tipo} etapa={e} />)}
       </div>
     </div>
   );
 }
 
 function EtapaItem({ etapa }: { etapa: EtapaCalculada }) {
-  const cor = {
-    feito:    { bg: 'var(--primary)',            fg: '#fff',           border: 'var(--primary)'            },
-    proxima:  { bg: 'rgba(74,144,200,.15)',       fg: 'var(--primary)', border: 'var(--primary)'            },
-    atrasada: { bg: 'rgba(239,68,68,.12)',        fg: '#ef4444',        border: '#ef4444'                   },
-    pendente: { bg: 'var(--bg-soft)',             fg: 'var(--muted)',   border: 'var(--line)'               },
-  }[etapa.status];
+  const dotClass =
+    etapa.status === 'feito' ? 'done' :
+    etapa.status === 'proxima' ? 'current' :
+    etapa.status === 'atrasada' ? 'late' : '';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, minWidth: 52 }}>
-      {/* Bolinha */}
-      <div style={{
-        width: 32, height: 32, borderRadius: 999,
-        background: cor.bg, border: `2px solid ${cor.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: etapa.status === 'feito' ? 14 : 16,
-        transition: 'all .2s',
-        flexShrink: 0,
-      }}>
+    <div className={`jornada-step${etapa.status === 'feito' ? ' done' : ''}`}>
+      <div className={`jornada-dot ${dotClass}`}>
         {etapa.status === 'feito' ? '✓' : etapa.emoji}
       </div>
-
-      {/* Label */}
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: cor.fg, textAlign: 'center', whiteSpace: 'nowrap' }}>
-        {etapa.label}
-      </div>
-
-      {/* Data */}
-      <div style={{ fontSize: 10, color: 'var(--muted)', textAlign: 'center', minHeight: 13 }}>
-        {etapa.status === 'feito' && fmtData(etapa.dataRealizada)}
-        {etapa.status === 'proxima' && etapa.dataPrevista && fmtData(etapa.dataPrevista)}
-        {etapa.status === 'atrasada' && <span style={{ color: '#ef4444' }}>-{etapa.diasAtraso}d</span>}
+      <div className="jornada-body">
+        <div className={`jornada-title${etapa.status === 'pendente' ? ' muted' : ''}`}>
+          {etapa.label}
+          {etapa.status === 'proxima' && <span className="jornada-badge current">Próxima</span>}
+          {etapa.status === 'atrasada' && <span className="jornada-badge late">Atrasada</span>}
+        </div>
+        <div className="jornada-meta">
+          {etapa.status === 'feito' && <>Realizada em {fmtData(etapa.dataRealizada)}</>}
+          {etapa.status === 'proxima' && (etapa.dataPrevista ? <>Prevista para {fmtData(etapa.dataPrevista)}</> : 'A agendar')}
+          {etapa.status === 'atrasada' && <span style={{ color: '#ef4444', fontWeight: 600 }}>Vencida há {etapa.diasAtraso} dia{etapa.diasAtraso !== 1 ? 's' : ''} · era {fmtData(etapa.dataPrevista)}</span>}
+          {etapa.status === 'pendente' && (etapa.dataPrevista ? <>Estimada {fmtData(etapa.dataPrevista)}</> : 'Pendente')}
+        </div>
       </div>
     </div>
   );
