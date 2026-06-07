@@ -126,41 +126,27 @@ export default function JornadaCliente({
 
   if (loading) return <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 12 }}>Carregando jornada...</div>;
 
-  const etapaAtual = etapas.find(e => e.status === 'proxima' || e.status === 'atrasada');
-
   return (
-    <div style={{ marginBottom: 20 }}>
-      {/* Banner da etapa atual */}
-      {etapaAtual && (
-        <div style={{
-          padding: '10px 14px',
-          borderRadius: 10,
-          marginBottom: 14,
-          background: etapaAtual.status === 'atrasada' ? 'rgba(239,68,68,.08)' : 'rgba(74,144,200,.08)',
-          border: `1px solid ${etapaAtual.status === 'atrasada' ? 'rgba(239,68,68,.25)' : 'rgba(74,144,200,.25)'}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <span style={{ fontSize: 18 }}>{etapaAtual.emoji}</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: etapaAtual.status === 'atrasada' ? '#ef4444' : 'var(--primary)' }}>
-              {etapaAtual.status === 'atrasada'
-                ? `${etapaAtual.label} atrasada há ${etapaAtual.diasAtraso} dia${etapaAtual.diasAtraso !== 1 ? 's' : ''}`
-                : `Próxima: ${etapaAtual.label}`}
-            </div>
-            {etapaAtual.dataPrevista && (
-              <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 1 }}>
-                {etapaAtual.status === 'atrasada' ? 'Deveria ter sido em' : 'Prevista para'}: {fmtData(etapaAtual.dataPrevista)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    <div style={{ marginBottom: 16 }}>
+      {/* Cabeçalho: só a data de quando virou cliente */}
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', marginBottom: 10 }}>
+        🗺️ Jornada
+        {dataFechamento && <> · <span style={{ color: 'var(--text)' }}>cliente desde {fmtData(dataFechamento)}</span></>}
+      </div>
 
-      {/* Stepper vertical */}
-      <div>
-        {etapas.map(e => <EtapaItem key={e.tipo} etapa={e} />)}
+      {/* Timeline horizontal */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 2 }}>
+        {etapas.map((e, i) => (
+          <React.Fragment key={e.tipo}>
+            <EtapaItem etapa={e} />
+            {i < etapas.length - 1 && (
+              <div style={{
+                height: 2, flex: 1, minWidth: 10, marginTop: 16,
+                background: e.status === 'feito' ? 'var(--primary)' : 'var(--line)',
+              }} />
+            )}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
@@ -173,22 +159,16 @@ function EtapaItem({ etapa }: { etapa: EtapaCalculada }) {
     etapa.status === 'atrasada' ? 'late' : '';
 
   return (
-    <div className={`jornada-step${etapa.status === 'feito' ? ' done' : ''}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: 58, flexShrink: 0 }}>
       <div className={`jornada-dot ${dotClass}`}>
         {etapa.status === 'feito' ? '✓' : etapa.emoji}
       </div>
-      <div className="jornada-body">
-        <div className={`jornada-title${etapa.status === 'pendente' ? ' muted' : ''}`}>
-          {etapa.label}
-          {etapa.status === 'proxima' && <span className="jornada-badge current">Próxima</span>}
-          {etapa.status === 'atrasada' && <span className="jornada-badge late">Atrasada</span>}
-        </div>
-        <div className="jornada-meta">
-          {etapa.status === 'feito' && <>Realizada em {fmtData(etapa.dataRealizada)}</>}
-          {etapa.status === 'proxima' && (etapa.dataPrevista ? <>Prevista para {fmtData(etapa.dataPrevista)}</> : 'A agendar')}
-          {etapa.status === 'atrasada' && <span style={{ color: '#ef4444', fontWeight: 600 }}>Vencida há {etapa.diasAtraso} dia{etapa.diasAtraso !== 1 ? 's' : ''} · era {fmtData(etapa.dataPrevista)}</span>}
-          {etapa.status === 'pendente' && (etapa.dataPrevista ? <>Estimada {fmtData(etapa.dataPrevista)}</> : 'Pendente')}
-        </div>
+      <div style={{
+        fontSize: 10, lineHeight: 1.2, textAlign: 'center',
+        fontWeight: etapa.status === 'pendente' ? 500 : 600,
+        color: etapa.status === 'pendente' ? 'var(--muted)' : 'var(--text)',
+      }}>
+        {etapa.label}
       </div>
     </div>
   );
