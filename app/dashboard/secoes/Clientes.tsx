@@ -23,6 +23,7 @@ export default function Clientes() {
   const [busca, setBusca] = useState('');
   const [perfilAberto, setPerfilAberto] = useState<Pessoa | null>(null);
   const [modalNovo, setModalNovo] = useState(false);
+  const [modalImportar, setModalImportar] = useState(false);
   const [erro, setErro] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('nome');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -108,6 +109,7 @@ export default function Clientes() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={exportarCsv} style={btnGhost} title="Exportar lista em CSV">⬇ CSV</button>
+          <button onClick={() => setModalImportar(true)} style={btnGhost} title="Importar clientes de uma planilha">⬆ Importar</button>
           <button onClick={() => setModalNovo(true)} style={btnPrimary}>+ Adicionar cliente</button>
         </div>
       </div>
@@ -207,6 +209,14 @@ export default function Clientes() {
         <ModalNovoCliente
           onClose={() => setModalNovo(false)}
           onSaved={() => { setModalNovo(false); carregar(); }}
+        />
+      )}
+
+      {/* Modal importar CSV */}
+      {modalImportar && (
+        <ModalImportarClientes
+          onClose={() => setModalImportar(false)}
+          onSaved={() => { setModalImportar(false); carregar(); }}
         />
       )}
     </div>
@@ -415,6 +425,243 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
           <button onClick={salvar} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Salvando...' : 'Criar cliente'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Importação CSV ───────────────────────────────────────────
+const COLUNAS_IMPORT = ['nome', 'telefone', 'email', 'empresa', 'origem', 'data_fechamento', 'analise', 'c1', 'c2', 'c3', 'c4', 'acompanhamento', 'patrimonio', 'renda_mensal', 'perfil_risco', 'objetivo'];
+const ETAPAS_IMPORT = ['analise', 'c1', 'c2', 'c3', 'c4', 'acompanhamento'] as const;
+
+// Quebra uma linha CSV respeitando aspas
+function parseLinhaCsv(linha: string, delim: string): string[] {
+  const out: string[] = [];
+  let cur = '', dentro = false;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (c === '"') {
+      if (dentro && linha[i + 1] === '"') { cur += '"'; i++; }
+      else dentro = !dentro;
+    } else if (c === delim && !dentro) { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Normaliza data: aceita YYYY-MM-DD ou DD/MM/YYYY → ISO (ou null)
+function normData(s: string): string | null {
+  const t = (s || '').trim();
+  if (!t) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return null;
+}
+
+interface LinhaImport {
+  nome: string;
+  telefone: string | null; email: string | null; empresa: string | null; origem: string | null;
+  data_fechamento: string | null;
+  etapas: { tipo: string; data: string }[];
+  patrimonio: number | null; renda_mensal: number | null; perfil_risco: string | null; objetivo: string | null;
+  erros: string[];
+}
+
+function parseCsvClientes(texto: string): { linhas: LinhaImport[]; erroGeral?: string } {
+  const linhasBrutas = texto.replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (linhasBrutas.length < 2) return { linhas: [], erroGeral: 'O arquivo precisa de um cabeçalho e ao menos uma linha de dados.' };
+  const delim = (linhasBrutas[0].split(';').length > linhasBrutas[0].split(',').length) ? ';' : ',';
+  const header = parseLinhaCsv(linhasBrutas[0], delim).map(h => h.toLowerCase());
+  const idx = (col: string) => header.indexOf(col);
+  if (idx('nome') < 0) return { linhas: [], erroGeral: 'Cabeçalho inválido: a coluna "nome" é obrigatória.' };
+
+  const moeda = (v: string): number | null => { const n = Number(String(v || '').replace(/[^\d]/g, '')); return n > 0 ? n : null; };
+  const val = (cols: string[], col: string) => { const i = idx(col); return i >= 0 ? (cols[i] || '') : ''; };
+
+  const linhas: LinhaImport[] = [];
+  for (let i = 1; i < linhasBrutas.length; i++) {
+    const cols = parseLinhaCsv(linhasBrutas[i], delim);
+    const nome = val(cols, 'nome').trim();
+    const erros: string[] = [];
+    if (!nome) erros.push('sem nome');
+
+    const etapas: { tipo: string; data: string }[] = [];
+    for (const et of ETAPAS_IMPORT) {
+      const raw = val(cols, et);
+      if (raw.trim()) {
+        const d = normData(raw);
+        if (d) etapas.push({ tipo: et, data: d });
+        else erros.push(`data inválida em "${et}" (${raw})`);
+      }
+    }
+    const df = val(cols, 'data_fechamento');
+    let data_fechamento: string | null = null;
+    if (df.trim()) { data_fechamento = normData(df); if (!data_fechamento) erros.push(`data_fechamento inválida (${df})`); }
+
+    linhas.push({
+      nome,
+      telefone: val(cols, 'telefone') || null,
+      email: val(cols, 'email') || null,
+      empresa: val(cols, 'empresa') || null,
+      origem: val(cols, 'origem') || null,
+      data_fechamento,
+      etapas,
+      patrimonio: moeda(val(cols, 'patrimonio')),
+      renda_mensal: moeda(val(cols, 'renda_mensal')),
+      perfil_risco: val(cols, 'perfil_risco').toLowerCase() || null,
+      objetivo: val(cols, 'objetivo') || null,
+      erros,
+    });
+  }
+  return { linhas };
+}
+
+function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [texto, setTexto] = useState('');
+  const [parsed, setParsed] = useState<LinhaImport[]>([]);
+  const [erroGeral, setErroGeral] = useState('');
+  const [importando, setImportando] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: number; falhas: number } | null>(null);
+
+  const aoColar = (t: string) => {
+    setTexto(t); setResultado(null);
+    if (!t.trim()) { setParsed([]); setErroGeral(''); return; }
+    const r = parseCsvClientes(t);
+    setParsed(r.linhas); setErroGeral(r.erroGeral || '');
+  };
+
+  const aoSelecionarArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => aoColar(String(reader.result || ''));
+    reader.readAsText(f, 'utf-8');
+    e.target.value = '';
+  };
+
+  const baixarModelo = () => {
+    const exemplo = ['Maria Silva', '(11) 99999-0000', 'maria@ex.com', 'Acme', 'Indicação', '01/02/2026', '01/02/2026', '11/02/2026', '21/02/2026', '', '', '', '800000', '25000', 'moderado', 'Aposentadoria'];
+    baixarCsv(gerarCsv(COLUNAS_IMPORT, [exemplo]), 'modelo-importar-clientes.csv');
+  };
+
+  const validas = parsed.filter(l => l.erros.length === 0);
+  const comErro = parsed.filter(l => l.erros.length > 0);
+
+  const importar = async () => {
+    setImportando(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setErroGeral('Sessão expirada.'); setImportando(false); return; }
+
+    let ok = 0, falhas = 0;
+    for (const l of validas) {
+      const cx = {
+        c1: l.etapas.some(e => e.tipo === 'c1'),
+        c2: l.etapas.some(e => e.tipo === 'c2'),
+        c3: l.etapas.some(e => e.tipo === 'c3'),
+        c4: l.etapas.some(e => e.tipo === 'c4'),
+      };
+      const analiseData = l.etapas.find(e => e.tipo === 'analise')?.data;
+      const dataInicio = analiseData || l.data_fechamento || new Date().toISOString().slice(0, 10);
+
+      const { data: nova, error } = await supabase.from('pessoas').insert({
+        nome: l.nome, telefone: l.telefone, email: l.email, empresa: l.empresa, origem: l.origem,
+        fase: 'cliente', status: 'ativo', user_id: user.id,
+        data_inicio: dataInicio, data_fechamento: l.data_fechamento,
+        patrimonio: l.patrimonio, renda_mensal: l.renda_mensal, perfil_risco: l.perfil_risco, objetivo: l.objetivo,
+        ...cx,
+      }).select('id').single();
+
+      if (error || !nova) { falhas++; continue; }
+      const pessoaId = (nova as { id: string }).id;
+
+      if (l.etapas.length > 0) {
+        await supabase.from('reunioes').insert(
+          l.etapas.map(e => ({ pessoa_id: pessoaId, user_id: user.id, tipo: e.tipo, data_reuniao: e.data }))
+        );
+        const ordem = ETAPAS_IMPORT as readonly string[];
+        const ultima = [...l.etapas].sort((a, b) => ordem.indexOf(a.tipo) - ordem.indexOf(b.tipo)).pop()!;
+        const prox = PROXIMA_DEPOIS[ultima.tipo];
+        if (prox) {
+          await supabase.from('proximos_passos').insert({
+            pessoa_id: pessoaId, user_id: user.id,
+            descricao: `Agendar ${prox.label}`, data_prevista: addDiasIso(ultima.data, prox.dias),
+          });
+        }
+      }
+      ok++;
+    }
+    setResultado({ ok, falhas });
+    setImportando(false);
+    if (ok > 0) onSaved();
+  };
+
+  return (
+    <div onClick={onClose} style={overlay}>
+      <div onClick={e => e.stopPropagation()} style={{ ...modalBox, maxWidth: 620 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Importar clientes (CSV)</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.5 }}>
+          Colunas: <code>nome</code> (obrigatória), telefone, email, empresa, origem, data_fechamento e as etapas
+          já realizadas (<code>analise, c1, c2, c3, c4, acompanhamento</code>) com a data de cada uma
+          (DD/MM/AAAA). Patrimônio, renda_mensal, perfil_risco e objetivo são opcionais.
+        </div>
+
+        {!resultado && (<>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <button onClick={baixarModelo} style={btnGhost}>⬇ Baixar modelo</button>
+            <label style={{ ...btnGhost, cursor: 'pointer' }}>
+              📎 Selecionar arquivo
+              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={aoSelecionarArquivo} />
+            </label>
+          </div>
+
+          <Field label="Ou cole o conteúdo do CSV">
+            <textarea
+              value={texto}
+              onChange={e => aoColar(e.target.value)}
+              placeholder={'nome,telefone,...,analise,c1,...\nMaria Silva,...,01/02/2026,11/02/2026,...'}
+              style={{ ...inputStyle, minHeight: 90, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
+            />
+          </Field>
+
+          {erroGeral && <div style={errorBox}>{erroGeral}</div>}
+
+          {parsed.length > 0 && (
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text)', marginBottom: 8 }}>
+                <strong>{validas.length}</strong> cliente{validas.length !== 1 ? 's' : ''} pronto{validas.length !== 1 ? 's' : ''} para importar
+                {comErro.length > 0 && <span style={{ color: 'var(--crit)' }}> · {comErro.length} com erro (serão ignorados)</span>}
+              </div>
+              <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 8 }}>
+                {parsed.slice(0, 50).map((l, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
+                    <span>{l.erros.length === 0 ? '✅' : '⚠️'}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text)', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.nome || '(sem nome)'}</span>
+                    {l.etapas.length > 0 && <span style={{ color: 'var(--muted)' }}>{l.etapas.map(e => e.tipo).join(', ')}</span>}
+                    {l.erros.length > 0 && <span style={{ color: 'var(--crit)', fontSize: 11.5 }}>{l.erros.join('; ')}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>)}
+
+        {resultado && (
+          <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--primary-100)', border: '1px solid var(--primary-200)', fontSize: 13.5, color: 'var(--text)', marginBottom: 12 }}>
+            ✅ <strong>{resultado.ok}</strong> cliente{resultado.ok !== 1 ? 's' : ''} importado{resultado.ok !== 1 ? 's' : ''} com sucesso.
+            {resultado.falhas > 0 && <div style={{ color: 'var(--crit)', marginTop: 4 }}>⚠️ {resultado.falhas} falha{resultado.falhas !== 1 ? 's' : ''} ao inserir.</div>}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <button onClick={onClose} style={btnGhost}>{resultado ? 'Fechar' : 'Cancelar'}</button>
+          {!resultado && (
+            <button onClick={importar} disabled={importando || validas.length === 0} style={{ ...btnPrimary, opacity: (importando || validas.length === 0) ? 0.6 : 1 }}>
+              {importando ? 'Importando...' : `Importar ${validas.length} cliente${validas.length !== 1 ? 's' : ''}`}
+            </button>
+          )}
         </div>
       </div>
     </div>
