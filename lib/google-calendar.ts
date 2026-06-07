@@ -301,11 +301,15 @@ export interface CreateEventPayload {
   timeZone?: string;
 }
 
+export type CreateEventResult =
+  | { ok: true; id: string; htmlLink: string }
+  | { ok: false; status: number; detail: string };
+
 export async function createCalendarEvent(
   accessToken: string,
   payload: CreateEventPayload,
   calendarId = 'primary',
-): Promise<{ id: string; htmlLink: string } | null> {
+): Promise<CreateEventResult> {
   const body = {
     summary: payload.summary,
     description: payload.description || '',
@@ -332,9 +336,9 @@ export async function createCalendarEvent(
   if (!res.ok) {
     const txt = await res.text();
     console.error('[google-calendar] createEvent falhou:', res.status, txt);
-    return null;
+    return { ok: false, status: res.status, detail: txt };
   }
 
   const json = await res.json() as { id: string; htmlLink: string };
-  return { id: json.id, htmlLink: json.htmlLink };
+  return { ok: true, id: json.id, htmlLink: json.htmlLink };
 }

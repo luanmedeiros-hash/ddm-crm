@@ -33,8 +33,20 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await createCalendarEvent(accessToken, body as CreateEventPayload);
-  if (!result) {
-    return NextResponse.json({ ok: false, error: 'Erro ao criar evento no Google Calendar.' }, { status: 502 });
+  if (!result.ok) {
+    // 401/403 = token sem permissão de escrita (escopo antigo) → reconectar
+    if (result.status === 401 || result.status === 403) {
+      return NextResponse.json({
+        ok: false,
+        error: 'sem_permissao',
+        message: 'Sem permissão de escrita no Google Calendar. Saia e entre novamente para reautorizar.',
+      }, { status: 403 });
+    }
+    return NextResponse.json({
+      ok: false,
+      error: 'Erro ao criar evento no Google Calendar.',
+      message: result.detail?.slice(0, 300),
+    }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true, eventId: result.id, link: result.htmlLink });
