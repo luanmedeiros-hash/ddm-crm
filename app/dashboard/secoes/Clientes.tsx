@@ -276,6 +276,18 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
     const semData = feitas.find(e => !etapas[e.tipo].data);
     if (semData) { setErro(`Informe a data da etapa "${semData.label}".`); return; }
 
+    // Dedup leve: avisa se já existe cliente com mesmo nome ou e-mail
+    const nomeBusca = form.nome.trim();
+    const { data: dupNome } = await supabase.from('pessoas').select('id, nome').eq('fase', 'cliente').ilike('nome', nomeBusca);
+    let dupEmail: { id: string }[] | null = null;
+    if (form.email.trim()) {
+      ({ data: dupEmail } = await supabase.from('pessoas').select('id').eq('fase', 'cliente').ilike('email', form.email.trim()));
+    }
+    if ((dupNome && dupNome.length > 0) || (dupEmail && dupEmail.length > 0)) {
+      const motivo = (dupNome && dupNome.length > 0) ? 'nome' : 'e-mail';
+      if (!confirm(`Já existe um cliente com esse ${motivo}. Criar mesmo assim?`)) return;
+    }
+
     setSaving(true); setErro('');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setErro('Sessão expirada.'); setSaving(false); return; }
@@ -524,7 +536,38 @@ function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSa
   const [parsed, setParsed] = useState<LinhaImport[]>([]);
   const [erroGeral, setErroGeral] = useState('');
   const [importando, setImportando] = useState(false);
-  const [resultado, setResultado] = useState<{ ok: number; falhas: number } | null>(null);
+  const [resultado, setResultado] = useState<{ ok: number; falhas: number; dups: number } | null>(null);
+  const [nomesExist, setNomesExist] = useState<Set<string>>(new Set());
+  const [emailsExist, setEmailsExist] = useState<Set<string>>(new Set());
+
+  // Carrega clientes existentes para detectar duplicados
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('pessoas').select('nome, email').eq('fase', 'cliente');
+      const ns = new Set<string>(), es = new Set<string>();
+      (data || []).forEach((p: { nome: string | null; email: string | null }) => {
+        if (p.nome) ns.add(p.nome.trim().toLowerCase());
+        if (p.email) es.add(p.email.trim().toLowerCase());
+      });
+      setNomesExist(ns); setEmailsExist(es);
+    })();
+  }, []);
+
+  // Marca cada linha como duplicada (já existe no banco ou repetida no arquivo)
+  const dupInfo = useMemo(() => {
+    const vistosNome = new Set<string>(), vistosEmail = new Set<string>();
+    return parsed.map(l => {
+      const n = l.nome.trim().toLowerCase();
+      const e = (l.email || '').trim().toLowerCase();
+      let dup = false;
+      if (l.erros.length === 0) {
+        if (nomesExist.has(n) || (e && emailsExist.has(e))) dup = true;
+        else if (vistosNome.has(n) || (e && vistosEmail.has(e))) dup = true;
+        else { vistosNome.add(n); if (e) vistosEmail.add(e); }
+      }
+      return dup;
+    });
+  }, [parsed, nomesExist, emailsExist]);
 
   const aoColar = (t: string) => {
     setTexto(t); setResultado(null);
@@ -547,8 +590,9 @@ function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSa
     baixarCsv(gerarCsv(COLUNAS_IMPORT, [exemplo]), 'modelo-importar-clientes.csv');
   };
 
-  const validas = parsed.filter(l => l.erros.length === 0);
+  const validas = parsed.filter((l, i) => l.erros.length === 0 && !dupInfo[i]);
   const comErro = parsed.filter(l => l.erros.length > 0);
+  const duplicados = parsed.filter((l, i) => l.erros.length === 0 && dupInfo[i]).length;
 
   const importar = async () => {
     setImportando(true);
@@ -593,7 +637,7 @@ function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSa
       }
       ok++;
     }
-    setResultado({ ok, falhas });
+    setResultado({ ok, falhas, dups: duplicados });
     setImportando(false);
     if (ok > 0) onSaved();
   };
@@ -632,17 +676,23 @@ function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSa
             <div style={{ marginTop: 4, marginBottom: 12 }}>
               <div style={{ fontSize: 12.5, color: 'var(--text)', marginBottom: 8 }}>
                 <strong>{validas.length}</strong> cliente{validas.length !== 1 ? 's' : ''} pronto{validas.length !== 1 ? 's' : ''} para importar
-                {comErro.length > 0 && <span style={{ color: 'var(--crit)' }}> · {comErro.length} com erro (serão ignorados)</span>}
+                {duplicados > 0 && <span style={{ color: 'var(--warn)' }}> · {duplicados} duplicado{duplicados !== 1 ? 's' : ''} (ignorado{duplicados !== 1 ? 's' : ''})</span>}
+                {comErro.length > 0 && <span style={{ color: 'var(--crit)' }}> · {comErro.length} com erro (ignorado{comErro.length !== 1 ? 's' : ''})</span>}
               </div>
               <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 8 }}>
-                {parsed.slice(0, 50).map((l, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--line)', fontSize: 12.5 }}>
-                    <span>{l.erros.length === 0 ? '✅' : '⚠️'}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text)', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.nome || '(sem nome)'}</span>
-                    {l.etapas.length > 0 && <span style={{ color: 'var(--muted)' }}>{l.etapas.map(e => e.tipo).join(', ')}</span>}
-                    {l.erros.length > 0 && <span style={{ color: 'var(--crit)', fontSize: 11.5 }}>{l.erros.join('; ')}</span>}
-                  </div>
-                ))}
+                {parsed.slice(0, 50).map((l, i) => {
+                  const dup = dupInfo[i];
+                  const icone = l.erros.length > 0 ? '⚠️' : dup ? '🔁' : '✅';
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--line)', fontSize: 12.5, opacity: (dup || l.erros.length > 0) ? 0.6 : 1 }}>
+                      <span>{icone}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text)', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.nome || '(sem nome)'}</span>
+                      {dup && <span style={{ color: 'var(--warn)', fontSize: 11.5 }}>já existe</span>}
+                      {!dup && l.etapas.length > 0 && <span style={{ color: 'var(--muted)' }}>{l.etapas.map(e => e.tipo).join(', ')}</span>}
+                      {l.erros.length > 0 && <span style={{ color: 'var(--crit)', fontSize: 11.5 }}>{l.erros.join('; ')}</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -651,6 +701,7 @@ function ModalImportarClientes({ onClose, onSaved }: { onClose: () => void; onSa
         {resultado && (
           <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--primary-100)', border: '1px solid var(--primary-200)', fontSize: 13.5, color: 'var(--text)', marginBottom: 12 }}>
             ✅ <strong>{resultado.ok}</strong> cliente{resultado.ok !== 1 ? 's' : ''} importado{resultado.ok !== 1 ? 's' : ''} com sucesso.
+            {resultado.dups > 0 && <div style={{ color: 'var(--warn)', marginTop: 4 }}>🔁 {resultado.dups} duplicado{resultado.dups !== 1 ? 's' : ''} ignorado{resultado.dups !== 1 ? 's' : ''}.</div>}
             {resultado.falhas > 0 && <div style={{ color: 'var(--crit)', marginTop: 4 }}>⚠️ {resultado.falhas} falha{resultado.falhas !== 1 ? 's' : ''} ao inserir.</div>}
           </div>
         )}
