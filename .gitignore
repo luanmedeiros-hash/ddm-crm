@@ -8,3 +8,4 @@ tsconfig.tsbuildinfo
 *.bak
 *.bak2
 .env.local
+CONTEXTO.md
