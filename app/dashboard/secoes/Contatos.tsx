@@ -5,6 +5,11 @@ import { supabase } from '@/lib/supabase';
 import type { Pessoa, ContatoStatus } from '@/lib/types';
 import PerfilCliente from './PerfilCliente';
 import AgendarReuniao from './AgendarReuniao';
+import {
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  useDroppable, useDraggable, pointerWithin,
+  type DragStartEvent, type DragEndEvent,
+} from '@dnd-kit/core';
 
 // ─── Configuração de status ───────────────────────────────────
 const STATUS_LABEL: Record<ContatoStatus, string> = {
@@ -44,8 +49,7 @@ export default function Contatos() {
   const [perfilAberto, setPerfilAberto] = useState<Pessoa | null>(null);
   const [agendarPara, setAgendarPara] = useState<Pessoa | null>(null);
   const [modalNovo, setModalNovo] = useState<ContatoStatus | null>(null);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [overCol, setOverCol] = useState<ContatoStatus | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [erro, setErro] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('proximo_contato');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -90,11 +94,27 @@ export default function Contatos() {
     });
   }, [filtrados, sortKey, sortDir]);
 
-  // Drag & drop (board)
+  // Drag & drop (board) — dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
   const moverPara = useCallback(async (id: string, novoStatus: ContatoStatus) => {
     setContatos(prev => prev.map(p => p.id === id ? { ...p, status: novoStatus } : p));
     await supabase.from('pessoas').update({ status: novoStatus, updated_at: new Date().toISOString() }).eq('id', id);
   }, []);
+
+  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const onDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
+    const id = String(e.active.id);
+    const col = e.over?.id as ContatoStatus | undefined;
+    const atual = contatos.find(p => p.id === id);
+    if (col && STATUS_ORDER.includes(col) && atual && atual.status !== col) {
+      moverPara(id, col);
+    }
+  };
+  const activeCard = activeId ? contatos.find(p => p.id === activeId) || null : null;
 
   const converterEmCliente = async (c: Pessoa) => {
     if (!confirm(`Converter "${c.nome}" em cliente?`)) return;
@@ -241,83 +261,32 @@ export default function Contatos() {
           </div>
         )
       ) : (
-        /* ── Vista Board ── */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(180px, 1fr))`,
-          gap: 8,
-          overflowX: 'auto',
-          flex: 1,
-          paddingBottom: 8,
-        }}>
-          {STATUS_ORDER.map(col => {
-            const cfg = STATUS_CONFIG[col];
-            const cards = porColuna(col);
-            const isOver = overCol === col;
-            return (
-              <div
+        /* ── Vista Board (dnd-kit) ── */
+        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${STATUS_ORDER.length}, minmax(180px, 1fr))`,
+            gap: 8,
+            overflowX: 'auto',
+            flex: 1,
+            paddingBottom: 8,
+          }}>
+            {STATUS_ORDER.map(col => (
+              <Coluna
                 key={col}
-                onDragOver={e => { e.preventDefault(); setOverCol(col); }}
-                onDrop={e => { e.preventDefault(); if (dragId) moverPara(dragId, col); setDragId(null); setOverCol(null); }}
-                style={{
-                  borderRadius: 10,
-                  background: isOver ? cfg.bg : 'var(--bg-soft)',
-                  border: `1px solid ${isOver ? cfg.fg + '60' : 'var(--line)'}`,
-                  transition: 'all .15s',
-                  minHeight: 160,
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                {/* Header coluna */}
-                <div style={{ padding: '9px 11px', borderBottom: `2px solid ${cfg.fg}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: cfg.fg }}>{cfg.emoji} {STATUS_LABEL[col]}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: cfg.bg, color: cfg.fg }}>{cards.length}</span>
-                    <button onClick={() => setModalNovo(col)} style={{ width: 18, height: 18, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                  </div>
-                </div>
-                {/* Cards */}
-                <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
-                  {cards.map(p => (
-                    <div
-                      key={p.id}
-                      draggable
-                      onDragStart={() => setDragId(p.id)}
-                      onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                      onClick={() => setPerfilAberto(p)}
-                      style={{
-                        padding: '9px 10px', borderRadius: 7,
-                        background: dragId === p.id ? 'var(--bg-soft)' : 'var(--bg-card)',
-                        border: `1px solid ${dragId === p.id ? cfg.fg + '60' : 'var(--line)'}`,
-                        cursor: 'grab', opacity: dragId === p.id ? 0.5 : 1,
-                        userSelect: 'none',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 3, flex: 1 }}>{p.nome}</div>
-                        <button
-                          onClick={e => { e.stopPropagation(); setAgendarPara(p); }}
-                          title="Agendar reunião"
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1, flexShrink: 0 }}
-                        >📅</button>
-                      </div>
-                      {p.empresa && <div style={{ fontSize: 11, color: 'var(--muted)' }}>🏢 {p.empresa}</div>}
-                      {p.proximo_contato && (
-                        <div style={{ fontSize: 10.5, marginTop: 4, fontWeight: 600, color: new Date(p.proximo_contato) < new Date() ? '#ef4444' : '#22c55e' }}>
-                          ⏰ {fmtData(p.proximo_contato)}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {cards.length === 0 && (
-                    <div style={{ padding: '16px 6px', textAlign: 'center', color: 'var(--muted)', fontSize: 11, opacity: .5 }}>Arraste aqui</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                col={col}
+                cards={porColuna(col)}
+                activeId={activeId}
+                onNovo={() => setModalNovo(col)}
+                onAbrir={setPerfilAberto}
+                onAgendar={setAgendarPara}
+              />
+            ))}
+          </div>
+          <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(.18,.67,.6,1.22)' }}>
+            {activeCard ? <CardLead p={activeCard} overlay /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* Drawer perfil */}
@@ -341,6 +310,98 @@ export default function Contatos() {
           onClose={() => setModalNovo(null)}
           onSaved={() => { setModalNovo(null); carregar(); }}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── Board: coluna (droppable) ────────────────────────────────
+function Coluna({ col, cards, activeId, onNovo, onAbrir, onAgendar }: {
+  col: ContatoStatus;
+  cards: Pessoa[];
+  activeId: string | null;
+  onNovo: () => void;
+  onAbrir: (p: Pessoa) => void;
+  onAgendar: (p: Pessoa) => void;
+}) {
+  const cfg = STATUS_CONFIG[col];
+  const { setNodeRef, isOver } = useDroppable({ id: col });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        borderRadius: 10,
+        background: isOver ? cfg.bg : 'var(--bg-soft)',
+        border: `1px solid ${isOver ? cfg.fg + '80' : 'var(--line)'}`,
+        boxShadow: isOver ? `0 0 0 2px ${cfg.fg}30` : 'none',
+        transition: 'background .15s, border-color .15s, box-shadow .15s',
+        minHeight: 160,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div style={{ padding: '9px 11px', borderBottom: `2px solid ${cfg.fg}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: cfg.fg }}>{cfg.emoji} {STATUS_LABEL[col]}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: cfg.bg, color: cfg.fg }}>{cards.length}</span>
+          <button onClick={onNovo} style={{ width: 18, height: 18, border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+        </div>
+      </div>
+      <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
+        {cards.map(p => (
+          <CardLead key={p.id} p={p} dragging={activeId === p.id} onAbrir={onAbrir} onAgendar={onAgendar} />
+        ))}
+        {cards.length === 0 && (
+          <div style={{ padding: '16px 6px', textAlign: 'center', color: 'var(--muted)', fontSize: 11, opacity: .5 }}>Arraste aqui</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Board: card de lead (draggable) ──────────────────────────
+function CardLead({ p, dragging, overlay, onAbrir, onAgendar }: {
+  p: Pessoa;
+  dragging?: boolean;
+  overlay?: boolean;
+  onAbrir?: (p: Pessoa) => void;
+  onAgendar?: (p: Pessoa) => void;
+}) {
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: p.id, disabled: overlay });
+  const atrasado = p.proximo_contato && new Date(p.proximo_contato) < new Date();
+  return (
+    <div
+      ref={setNodeRef}
+      {...(overlay ? {} : listeners)}
+      {...(overlay ? {} : attributes)}
+      onClick={() => !overlay && onAbrir?.(p)}
+      style={{
+        padding: '9px 10px', borderRadius: 7,
+        background: 'var(--bg-card)',
+        border: `1px solid var(--line)`,
+        cursor: overlay ? 'grabbing' : 'grab',
+        opacity: dragging ? 0.35 : 1,
+        boxShadow: overlay ? 'var(--shadow-lg)' : 'none',
+        transform: overlay ? 'rotate(2deg)' : 'none',
+        userSelect: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 3, flex: 1 }}>{p.nome}</div>
+        {onAgendar && (
+          <button
+            onClick={e => { e.stopPropagation(); onAgendar(p); }}
+            onPointerDown={e => e.stopPropagation()}
+            title="Agendar reunião"
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1, flexShrink: 0 }}
+          >📅</button>
+        )}
+      </div>
+      {p.empresa && <div style={{ fontSize: 11, color: 'var(--muted)' }}>🏢 {p.empresa}</div>}
+      {p.proximo_contato && (
+        <div style={{ fontSize: 10.5, marginTop: 4, fontWeight: 600, color: atrasado ? '#ef4444' : '#22c55e' }}>
+          ⏰ {fmtData(p.proximo_contato)}
+        </div>
       )}
     </div>
   );

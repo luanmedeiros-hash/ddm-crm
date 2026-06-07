@@ -736,6 +736,59 @@
   .theme-dark .dt-iconbtn { background: var(--bg-card); }
 
   /* ========================================================
+     COMMAND PALETTE (⌘K)
+     ======================================================== */
+  .cmdk-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(15, 23, 42, .45);
+    backdrop-filter: blur(2px);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 12vh;
+    animation: cmdk-fade .12s ease;
+  }
+  @keyframes cmdk-fade { from { opacity: 0 } to { opacity: 1 } }
+  .cmdk-box {
+    width: 100%; max-width: 580px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: cmdk-pop .14s ease;
+  }
+  @keyframes cmdk-pop { from { transform: translateY(-8px); opacity: .6 } to { transform: translateY(0); opacity: 1 } }
+  .cmdk-input-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .cmdk-search-icon { font-size: 15px; opacity: .6; }
+  .cmdk-input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-size: 15px; color: var(--text); font-family: inherit;
+  }
+  .cmdk-input::placeholder { color: var(--muted-2); }
+  .cmdk-list { max-height: 56vh; overflow-y: auto; padding: 6px; }
+  .cmdk-empty { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+  .cmdk-group { padding: 4px 0; }
+  .cmdk-group [cmdk-group-heading] {
+    padding: 6px 10px 4px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+    color: var(--muted); text-transform: uppercase;
+  }
+  .cmdk-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 9px;
+    font-size: 13.5px; color: var(--text);
+    cursor: pointer; user-select: none;
+  }
+  .cmdk-item[data-selected="true"] { background: var(--primary-100); }
+  .cmdk-item-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .cmdk-item-label { font-weight: 500; }
+  .cmdk-item-hint { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+  .theme-dark .cmdk-box { background: var(--bg-card); }
+
+  /* ========================================================
      KPI BENTO — faixa de indicadores no topo do Dashboard
      ======================================================== */
   .kpi-bento {

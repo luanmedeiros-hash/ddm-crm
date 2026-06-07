@@ -21,6 +21,7 @@ import Produtividade from './secoes/Produtividade';
 import Funil from './secoes/Funil';
 import Metas from './secoes/Metas';
 import CentralNotificacoes from './components/CentralNotificacoes';
+import CommandPalette from './components/CommandPalette';
 import Clientes from './secoes/Clientes';
 import Contatos from './secoes/Contatos';
 import Equipe from './secoes/Equipe';
@@ -63,6 +64,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [cmdkOpen, setCmdkOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<'mail' | 'bell' | 'user' | null>(null);
   const [searchPessoas, setSearchPessoas] = useState<{ id: string; nome: string; fase: string; status: string; empresa: string | null }[]>([]);
   const [searchPessoasLoading, setSearchPessoasLoading] = useState(false);
@@ -145,6 +147,10 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   // Atalhos de teclado
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdkOpen(o => !o);
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
         e.preventDefault();
         setShowSearch(true);
@@ -153,6 +159,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
       if (e.key === 'Escape') {
         setShowSearch(false);
         setOpenDropdown(null);
+        setCmdkOpen(false);
       }
     };
     window.addEventListener('keydown', handler);
@@ -269,6 +276,25 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
 
   const userInitial = (userName || userEmail || 'U').charAt(0).toUpperCase();
 
+  // Itens de navegação para o command palette (respeitam o papel do usuário)
+  const cmdkNavItems = useMemo(() => {
+    const all: { key: string; label: string; emoji: string; liderOnly?: boolean; flag?: keyof typeof FEATURES }[] = [
+      { key: 'dashboard', label: 'Dashboard', emoji: '📊' },
+      { key: 'conversao', label: 'Conversão', emoji: '🔻' },
+      { key: 'agenda', label: 'Agenda', emoji: '📅', flag: 'GOOGLE_CALENDAR' },
+      { key: 'clientes', label: 'Clientes', emoji: '👤' },
+      { key: 'contatos', label: 'Leads', emoji: '🌱' },
+      { key: 'atencao', label: 'Atenção', emoji: '⚠️', liderOnly: true },
+      { key: 'funil', label: 'Funil', emoji: '🔄', liderOnly: true },
+      { key: 'ranking', label: 'Ranking', emoji: '🏆', liderOnly: true },
+      { key: 'historico', label: 'Histórico', emoji: '📈' },
+      { key: 'metas', label: 'Metas', emoji: '🎯', liderOnly: true },
+      { key: 'produtividade', label: 'Produtividade', emoji: '📋', liderOnly: true },
+      { key: 'equipe', label: 'Equipe', emoji: '👥', liderOnly: true },
+    ];
+    return all.filter(n => (!n.flag || FEATURES[n.flag]) && (!n.liderOnly || isLider));
+  }, [isLider]);
+
   return (
     <div className="app-grid">
       <Sidebar
@@ -294,7 +320,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
               onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
               onFocus={() => setShowSearch(true)}
             />
-            <span className="kbd">⌘ F</span>
+            <span className="kbd">⌘ K</span>
             {showSearch && (searchResults || searchQuery.trim().length >= 2) && (
               <div className="search-results">
                 {/* Clientes e contatos */}
@@ -302,7 +328,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
                   <>
                     <div className="search-result-group">Pessoas · {searchPessoas.length}</div>
                     {searchPessoas.map(p => (
-                      <div key={p.id} className="dropdown-item" onClick={() => { goToTab(p.fase === 'cliente' ? 'clientes' : 'pipeline'); setShowSearch(false); }}>
+                      <div key={p.id} className="dropdown-item" onClick={() => { goToTab(p.fase === 'cliente' ? 'clientes' : 'contatos'); setShowSearch(false); }}>
                         <div className="di-icon ok">{p.fase === 'cliente' ? '👤' : '🌱'}</div>
                         <div className="di-content">
                           <div className="di-title">{p.nome}</div>
@@ -583,6 +609,17 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
       )}
 
       {toast && <div className={`toast ${toast.isError ? 'error' : ''}`}>{toast.msg}</div>}
+
+      <CommandPalette
+        open={cmdkOpen}
+        onClose={() => setCmdkOpen(false)}
+        navItems={cmdkNavItems}
+        onGoTab={goToTab}
+        onRefresh={handleRefresh}
+        onImport={handleImport}
+        onNovoCliente={() => goToTab('clientes')}
+        onNovoLead={() => goToTab('contatos')}
+      />
     </div>
   );
 }
