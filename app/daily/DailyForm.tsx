@@ -79,6 +79,7 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
 
     const payload: Record<string, unknown> = {
       user_id: userId,
+      consultor: consultorNome,
       data: hoje,
       ctt_quente: cttQuente,
       bloqueio,
