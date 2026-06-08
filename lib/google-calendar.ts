@@ -5,6 +5,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CalendarEventDB, CalendarAttendee } from './types';
+import { fetchWithRetry } from './retry';
+import { reportError } from './log';
 
 export interface CalendarEvent {
   id: string;
@@ -50,14 +52,20 @@ async function refreshAccessToken(
     grant_type: 'refresh_token',
   });
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
+  let res: Response;
+  try {
+    res = await fetchWithRetry('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+  } catch (e) {
+    reportError('google-calendar.refreshToken', e);
+    return null;
+  }
 
   if (!res.ok) {
-    console.error('[google-calendar] refresh falhou:', res.status, await res.text());
+    reportError('google-calendar.refreshToken', new Error(`status ${res.status}`), { status: res.status, body: (await res.text()).slice(0, 500) });
     return null;
   }
 
@@ -320,22 +328,28 @@ export async function createCalendarEvent(
     reminders: { useDefault: true },
   };
 
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        cache: 'no-store',
       },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    },
-  );
+    );
+  } catch (e) {
+    reportError('google-calendar.createEvent', e);
+    return { ok: false, status: 0, detail: 'Falha de conexão com o Google Calendar.' };
+  }
 
   if (!res.ok) {
     const txt = await res.text();
-    console.error('[google-calendar] createEvent falhou:', res.status, txt);
+    reportError('google-calendar.createEvent', new Error(`status ${res.status}`), { status: res.status, body: txt.slice(0, 500) });
     return { ok: false, status: res.status, detail: txt };
   }
 

@@ -3,6 +3,8 @@
 // NUNCA expor no client-side.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { fetchWithRetry } from './retry';
+import { reportError } from './log';
 
 const BASE = 'https://w1nner.w1consultoria.com.br/painel-consultor';
 
@@ -170,10 +172,17 @@ export async function winnerCriarEvento(
   const jar = parseCookieHeader(sessionCookie);
 
   // 1. GET na página de novo evento para obter CSRF + atualizar cookie
-  const newPage = await fetch(`${BASE}/agenda/new`, {
-    headers: { 'User-Agent': UA, 'Cookie': jarToHeader(jar) },
-    redirect: 'manual',
-  });
+  //    (GET é idempotente — retry seguro em falha transitória)
+  let newPage: Response;
+  try {
+    newPage = await fetchWithRetry(`${BASE}/agenda/new`, {
+      headers: { 'User-Agent': UA, 'Cookie': jarToHeader(jar) },
+      redirect: 'manual',
+    });
+  } catch (e) {
+    reportError('winner.criarEvento.get', e);
+    return { ok: false, error: 'Falha de conexão com o W1nner. Tente de novo.' };
+  }
 
   // Redirect para login = sessão expirada
   if (newPage.status >= 300 && newPage.status < 400) {
@@ -214,21 +223,28 @@ export async function winnerCriarEvento(
     body.append('calendar_event[person_id]', payload.winnerConsultantId);
   }
 
-  // 3. POST — usa o cookie atualizado + token no header e no corpo
-  const res = await fetch(`${BASE}/agenda`, {
-    method: 'POST',
-    redirect: 'manual',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'User-Agent': UA,
-      'Cookie': jarToHeader(jar),
-      'X-CSRF-Token': csrf,
-      'X-Requested-With': 'XMLHttpRequest',
-      'Origin': 'https://w1nner.w1consultoria.com.br',
-      'Referer': `${BASE}/agenda/new`,
-    },
-    body,
-  });
+  // 3. POST — usa o cookie atualizado + token no header e no corpo.
+  //    NÃO usa retry: não é idempotente (evitar evento duplicado).
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/agenda`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': UA,
+        'Cookie': jarToHeader(jar),
+        'X-CSRF-Token': csrf,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': 'https://w1nner.w1consultoria.com.br',
+        'Referer': `${BASE}/agenda/new`,
+      },
+      body,
+    });
+  } catch (e) {
+    reportError('winner.criarEvento.post', e);
+    return { ok: false, error: 'Falha de conexão ao salvar no W1nner. Verifique se o evento foi criado antes de tentar de novo.' };
+  }
 
   // Sucesso = 302 para /agenda/{id} (ou /agenda)
   if (res.status === 302) {
@@ -240,7 +256,7 @@ export async function winnerCriarEvento(
 
   // 422 = token CSRF inválido / sessão inconsistente
   if (res.status === 422) {
-    return { ok: false, expirada: true, error: 'Sessão do W1nner inválida. Reconecte sua conta na aba Equipe.' };
+    return { ok: false, expirada: true, error: 'Sessão do W1nner inválida. Reconecte sua conta do W1nner.' };
   }
 
   if (res.status === 200) {

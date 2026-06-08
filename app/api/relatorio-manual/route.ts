@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { montarPrompt, TIPOS_REUNIAO, type TipoReuniao } from '@/lib/prompts-relatorio';
+import { reportError } from '@/lib/log';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'resposta vazia da IA' }, { status: 502 });
     }
   } catch (e: unknown) {
+    reportError('api.relatorio-manual', e, { pessoaId, tipo });
     const detail = e instanceof Error ? e.message : 'erro desconhecido';
     return NextResponse.json({ ok: false, error: 'erro ao gerar relatório', detail }, { status: 502 });
   }

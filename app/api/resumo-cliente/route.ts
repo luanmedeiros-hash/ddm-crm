@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServer } from '@/lib/supabase-server';
 import { TIPO_REUNIAO_LABEL, type TipoReuniao } from '@/lib/prompts-relatorio';
+import { reportError } from '@/lib/log';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -117,6 +118,7 @@ ${dossie}`;
     if (!resumo) return NextResponse.json({ ok: false, error: 'resposta vazia da IA' }, { status: 502 });
     return NextResponse.json({ ok: true, resumo });
   } catch (e: unknown) {
+    reportError('api.resumo-cliente', e, { pessoaId });
     const detail = e instanceof Error ? e.message : 'erro desconhecido';
     return NextResponse.json({ ok: false, error: 'erro ao gerar resumo', detail }, { status: 502 });
   }
