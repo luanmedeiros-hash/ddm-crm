@@ -40,8 +40,9 @@ type SortKey = 'nome' | 'status' | 'proximo_contato';
 type SortDir = 'asc' | 'desc';
 
 // ─── Componente principal ─────────────────────────────────────
-export default function Contatos() {
+export default function Contatos({ isLider = false }: { isLider?: boolean }) {
   const [contatos, setContatos] = useState<Pessoa[]>([]);
+  const [donos, setDonos] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('lista');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | ContatoStatus>('todos');
@@ -58,6 +59,18 @@ export default function Contatos() {
     if (k === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(k); setSortDir('asc'); }
   };
+
+  // Mapa user_id → nome do consultor (só o líder vê o dono do lead)
+  useEffect(() => {
+    if (!isLider) return;
+    supabase.from('profiles').select('id, nome, consultor_nome').then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data || []).forEach((p: { id: string; nome: string | null; consultor_nome: string | null }) => {
+        m[p.id] = p.consultor_nome || p.nome || '—';
+      });
+      setDonos(m);
+    });
+  }, [isLider]);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -212,6 +225,7 @@ export default function Contatos() {
               <thead>
                 <tr>
                   <Th label="Nome" k="nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  {isLider && <th>Consultor</th>}
                   <th>Contato</th>
                   <Th label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <Th label="Próximo contato" k="proximo_contato" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -225,6 +239,7 @@ export default function Contatos() {
                   return (
                     <tr key={c.id} onClick={() => setPerfilAberto(c)}>
                       <td><span className="dt-name">{c.nome}</span></td>
+                      {isLider && <td className="dt-sub">{donos[c.user_id] || '—'}</td>}
                       <td>
                         <div className="dt-sub">
                           {c.telefone && <div>📞 {c.telefone}</div>}
@@ -277,6 +292,7 @@ export default function Contatos() {
                 col={col}
                 cards={porColuna(col)}
                 activeId={activeId}
+                donos={isLider ? donos : null}
                 onNovo={() => setModalNovo(col)}
                 onAbrir={setPerfilAberto}
                 onAgendar={setAgendarPara}
@@ -316,10 +332,11 @@ export default function Contatos() {
 }
 
 // ─── Board: coluna (droppable) ────────────────────────────────
-function Coluna({ col, cards, activeId, onNovo, onAbrir, onAgendar }: {
+function Coluna({ col, cards, activeId, donos, onNovo, onAbrir, onAgendar }: {
   col: ContatoStatus;
   cards: Pessoa[];
   activeId: string | null;
+  donos: Record<string, string> | null;
   onNovo: () => void;
   onAbrir: (p: Pessoa) => void;
   onAgendar: (p: Pessoa) => void;
@@ -349,7 +366,7 @@ function Coluna({ col, cards, activeId, onNovo, onAbrir, onAgendar }: {
       </div>
       <div style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
         {cards.map(p => (
-          <CardLead key={p.id} p={p} dragging={activeId === p.id} onAbrir={onAbrir} onAgendar={onAgendar} />
+          <CardLead key={p.id} p={p} dragging={activeId === p.id} dono={donos ? (donos[p.user_id] || '—') : undefined} onAbrir={onAbrir} onAgendar={onAgendar} />
         ))}
         {cards.length === 0 && (
           <div style={{ padding: '16px 6px', textAlign: 'center', color: 'var(--muted)', fontSize: 11, opacity: .5 }}>Arraste aqui</div>
@@ -360,10 +377,11 @@ function Coluna({ col, cards, activeId, onNovo, onAbrir, onAgendar }: {
 }
 
 // ─── Board: card de lead (draggable) ──────────────────────────
-function CardLead({ p, dragging, overlay, onAbrir, onAgendar }: {
+function CardLead({ p, dragging, overlay, dono, onAbrir, onAgendar }: {
   p: Pessoa;
   dragging?: boolean;
   overlay?: boolean;
+  dono?: string;
   onAbrir?: (p: Pessoa) => void;
   onAgendar?: (p: Pessoa) => void;
 }) {
@@ -397,6 +415,7 @@ function CardLead({ p, dragging, overlay, onAbrir, onAgendar }: {
           >📅</button>
         )}
       </div>
+      {dono && <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>👤 {dono}</div>}
       {p.empresa && <div style={{ fontSize: 11, color: 'var(--muted)' }}>🏢 {p.empresa}</div>}
       {p.proximo_contato && (
         <div style={{ fontSize: 10.5, marginTop: 4, fontWeight: 600, color: atrasado ? '#ef4444' : '#22c55e' }}>

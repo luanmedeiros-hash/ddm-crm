@@ -49,6 +49,19 @@ export default function Clientes({ isLider = false }: { isLider?: boolean }) {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  // Mapa user_id → nome do consultor (só o líder precisa ver o dono)
+  const [donos, setDonos] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!isLider) return;
+    supabase.from('profiles').select('id, nome, consultor_nome').then(({ data }) => {
+      const m: Record<string, string> = {};
+      (data || []).forEach((p: { id: string; nome: string | null; consultor_nome: string | null }) => {
+        m[p.id] = p.consultor_nome || p.nome || '—';
+      });
+      setDonos(m);
+    });
+  }, [isLider]);
+
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase().trim();
     const arr = clientes.filter(c => {
@@ -160,6 +173,7 @@ export default function Clientes({ isLider = false }: { isLider?: boolean }) {
             <thead>
               <tr>
                 <Th label="Nome" k="nome" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                {isLider && <th>Consultor</th>}
                 <th>Contato</th>
                 <Th label="Empresa" k="empresa" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 <Th label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -172,6 +186,7 @@ export default function Clientes({ isLider = false }: { isLider?: boolean }) {
               {filtrados.map(c => (
                 <tr key={c.id} onClick={() => setPerfilAberto(c)}>
                   <td><span className="dt-name">{c.nome}</span></td>
+                  {isLider && <td className="dt-sub">{donos[c.user_id] || '—'}</td>}
                   <td>
                     <div className="dt-sub">
                       {c.telefone && <div>📞 {c.telefone}</div>}
