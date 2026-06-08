@@ -620,7 +620,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'historico' && <Historico todosRegs={registros} dataRef={dataRef} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
-        {activeTab === 'clientes' && <Clientes />}
+        {activeTab === 'clientes' && <Clientes isLider={isLider} />}
         {activeTab === 'contatos' && <Contatos />}
         {activeTab === 'metas' && <Metas />}
         {activeTab === 'produtividade' && <Produtividade />}

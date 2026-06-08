@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Pessoa, ClienteStatus } from '@/lib/types';
 import PerfilCliente from './PerfilCliente';
+import Funil from './Funil';
 import { gerarCsv, baixarCsv, fmtDataBrCsv } from '@/lib/exportar';
 
 const STATUS_LABEL: Record<ClienteStatus, string> = {
@@ -16,7 +17,8 @@ const CHECK_LABELS = ['C1', 'C2', 'C3', 'C4'] as const;
 type SortKey = 'nome' | 'status' | 'empresa' | 'origem';
 type SortDir = 'asc' | 'desc';
 
-export default function Clientes() {
+export default function Clientes({ isLider = false }: { isLider?: boolean }) {
+  const [subAba, setSubAba] = useState<'lista' | 'funil'>('lista');
   const [clientes, setClientes] = useState<Pessoa[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState<'todos' | ClienteStatus>('todos');
@@ -102,6 +104,18 @@ export default function Clientes() {
 
   return (
     <div style={{ padding: '4px 2px' }}>
+      {/* Sub-abas (consultor): Clientes | Funil */}
+      {!isLider && (
+        <div className="subtabs" style={{ marginTop: 0 }}>
+          <button className={`subtab ${subAba === 'lista' ? 'active' : ''}`} onClick={() => setSubAba('lista')}><span>👤</span> Clientes</button>
+          <button className={`subtab ${subAba === 'funil' ? 'active' : ''}`} onClick={() => setSubAba('funil')}><span>🔄</span> Funil</button>
+        </div>
+      )}
+
+      {!isLider && subAba === 'funil' ? (
+        <Funil isLider={false} />
+      ) : (
+      <>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
         <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
@@ -218,6 +232,8 @@ export default function Clientes() {
           onClose={() => setModalImportar(false)}
           onSaved={() => { setModalImportar(false); carregar(); }}
         />
+      )}
+      </>
       )}
     </div>
   );
