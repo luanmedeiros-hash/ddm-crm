@@ -9,6 +9,7 @@ interface Props {
   todosRegs: RegInterno[];
   consultores: string[];
   onGoTab: (tab: string) => void;
+  isLider?: boolean;
 }
 
 function Delta({ trend, hero }: { trend: Tendencia; hero?: boolean }) {
@@ -21,7 +22,7 @@ function Delta({ trend, hero }: { trend: Tendencia; hero?: boolean }) {
   );
 }
 
-export default function KpiBento({ filtered, todosRegs, consultores, onGoTab }: Props) {
+export default function KpiBento({ filtered, todosRegs, consultores, onGoTab, isLider }: Props) {
   const m = useMemo(() => {
     const { indice } = calcIndice(filtered);
     const trend = calcTendencia(regsValidos(todosRegs));
@@ -79,11 +80,13 @@ export default function KpiBento({ filtered, todosRegs, consultores, onGoTab }: 
         <div className="kpi-foot">geradas no período</div>
       </div>
 
-      <div className="kpi clickable" onClick={() => onGoTab('produtividade')}>
-        <div className="kpi-label">👥 Ativos</div>
-        <div className="kpi-value">{m.ativos}<span className="unit">/{consultores.length}</span></div>
-        <div className="kpi-foot">consultores</div>
-      </div>
+      {isLider && (
+        <div className="kpi clickable" onClick={() => onGoTab('produtividade')}>
+          <div className="kpi-label">👥 Ativos</div>
+          <div className="kpi-value">{m.ativos}<span className="unit">/{consultores.length}</span></div>
+          <div className="kpi-foot">consultores</div>
+        </div>
+      )}
     </div>
   );
 }

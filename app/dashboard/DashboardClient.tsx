@@ -492,11 +492,18 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
               <span style={{ color: 'var(--primary)' }}>·</span>
               <span style={{ color: 'var(--text-dim)' }}>{filtered.length} registros</span>
               {!filtroConsultor ? (
-                <span className="scope-chip team">
-                  <span className="scope-chip-icon">👥</span>
-                  <span>Toda a equipe</span>
-                  <span className="scope-chip-count">{ativosCount} ativos</span>
-                </span>
+                isLider ? (
+                  <span className="scope-chip team">
+                    <span className="scope-chip-icon">👥</span>
+                    <span>Toda a equipe</span>
+                    <span className="scope-chip-count">{ativosCount} ativos</span>
+                  </span>
+                ) : (
+                  <span className="scope-chip individual">
+                    <span className="scope-chip-icon">👤</span>
+                    <span>Meus dados</span>
+                  </span>
+                )
               ) : (
                 <span className="scope-chip individual">
                   <span className="scope-chip-icon">👤</span>
@@ -605,7 +612,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         )}
 
         {/* SEÇÕES */}
-        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} consultores={listaConsultores} />}
+        {activeTab === 'dashboard' && <Dashboard filtered={filtered} range={range} todosRegs={registros} onSelect={setSelectedConsultor} onGoTab={goToTab} onRefresh={handleRefresh} filtroConsultor={filtroConsultor} consultores={listaConsultores} isLider={isLider} />}
         {activeTab === 'conversao' && <Conversao filtered={filtered} />}
         {activeTab === 'atencao' && <Atencao filtered={filtered} consultoresPreencheram={consultoresPreencheram} dataAlvo={dataAlvo} periodo={periodo} consultores={listaConsultores} onSelect={setSelectedConsultor} />}
         {activeTab === 'funil' && <Funil isLider={isLider} />}

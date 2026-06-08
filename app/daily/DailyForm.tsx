@@ -8,6 +8,7 @@ import { FEATURES } from '@/lib/features';
 import Icon from '@/components/Icon';
 import AgendaConsultor from '@/components/AgendaConsultor';
 import MinhaCarteira from './MinhaCarteira';
+import ConexaoWinner from '@/app/dashboard/secoes/ConexaoWinner';
 import type { RegistroDaily } from '@/lib/types';
 
 const METAS_BASE: Record<string, number> = {
@@ -138,6 +139,11 @@ export default function DailyForm({ userId, consultorNome, registroExistente, is
 
         {/* Minha Carteira — visão do consultor */}
         <MinhaCarteira />
+
+        {/* Conexão W1nner — consultor conecta a própria conta */}
+        <div style={{ marginBottom: 20 }}>
+          <ConexaoWinner />
+        </div>
 
         {/* Abas */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>

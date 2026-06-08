@@ -23,9 +23,10 @@ interface Props {
   onRefresh: () => void;
   filtroConsultor?: string;
   consultores: string[];
+  isLider?: boolean;
 }
 
-export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh, filtroConsultor, consultores }: Props) {
+export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTab, onRefresh, filtroConsultor, consultores, isLider }: Props) {
   const top3 = useMemo(() => {
     return consultores.map(c => {
       const regs = filtered.filter(r => r.consultor === c);
@@ -38,7 +39,7 @@ export default function Dashboard({ filtered, range, todosRegs, onSelect, onGoTa
 
   return (
     <>
-      <KpiBento filtered={filtered} todosRegs={todosRegs} consultores={consultores} onGoTab={onGoTab} />
+      <KpiBento filtered={filtered} todosRegs={todosRegs} consultores={consultores} onGoTab={onGoTab} isLider={isLider} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div className="card">
