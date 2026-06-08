@@ -72,6 +72,23 @@ export default function PerfilCliente({
   const [aba, setAba] = useState<Aba>('info');
   const [mostrarMensagens, setMostrarMensagens] = useState(false);
   const [mostrarAgendar, setMostrarAgendar] = useState(false);
+  const [resumoIA, setResumoIA] = useState<{ aberto: boolean; loading: boolean; texto: string; erro: string }>({ aberto: false, loading: false, texto: '', erro: '' });
+
+  const gerarResumoIA = async () => {
+    setResumoIA({ aberto: true, loading: true, texto: '', erro: '' });
+    try {
+      const res = await fetch('/api/resumo-cliente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pessoaId: cliente.id }),
+      });
+      const json = await res.json();
+      if (json.ok) setResumoIA({ aberto: true, loading: false, texto: json.resumo, erro: '' });
+      else setResumoIA({ aberto: true, loading: false, texto: '', erro: json.message || json.error || 'Erro ao gerar resumo.' });
+    } catch {
+      setResumoIA({ aberto: true, loading: false, texto: '', erro: 'Falha de conexão.' });
+    }
+  };
 
   // Fechar com ESC
   useEffect(() => {
@@ -105,6 +122,13 @@ export default function PerfilCliente({
                 title="Agendar reunião"
               >
                 📅 Agendar
+              </button>
+              <button
+                onClick={gerarResumoIA}
+                style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg-soft)', color: 'var(--text)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}
+                title="Resumo do cliente por IA"
+              >
+                ✨ Resumo IA
               </button>
               <button
                 onClick={() => setMostrarMensagens(true)}
@@ -160,6 +184,31 @@ export default function PerfilCliente({
       )}
       {mostrarAgendar && (
         <AgendarReuniao cliente={cliente} onClose={() => setMostrarAgendar(false)} />
+      )}
+      {resumoIA.aberto && (
+        <div onClick={() => setResumoIA(s => ({ ...s, aberto: false }))} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.5)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>✨ Resumo de {cliente.nome}</div>
+              <button onClick={() => setResumoIA(s => ({ ...s, aberto: false }))} style={btnClose}>✕</button>
+            </div>
+            {resumoIA.loading && (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>🤖 Analisando o histórico do cliente...</div>
+            )}
+            {resumoIA.erro && (
+              <div style={{ padding: '12px 14px', borderRadius: 9, background: 'rgba(220,38,38,.08)', border: '1px solid rgba(220,38,38,.22)', color: 'var(--crit)', fontSize: 13 }}>{resumoIA.erro}</div>
+            )}
+            {resumoIA.texto && (
+              <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{resumoIA.texto}</div>
+            )}
+            {!resumoIA.loading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                {resumoIA.texto && <button onClick={() => navigator.clipboard?.writeText(resumoIA.texto)} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}>📋 Copiar</button>}
+                <button onClick={gerarResumoIA} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>↻ Gerar de novo</button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </>
   );
