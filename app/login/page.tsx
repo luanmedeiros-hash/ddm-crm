@@ -18,13 +18,13 @@ function LoginInner() {
     setGoogleLoading(true);
     setError('');
     const redirectTo = `${window.location.origin}/auth/callback`;
-    // Escrita no Google Calendar exige o escopo "calendar.events", que precisa
-    // estar liberado na tela de consentimento OAuth. Enquanto não estiver,
-    // mantemos só "readonly" (senão o Google bloqueia o login com 403).
-    // Para reativar a escrita: defina NEXT_PUBLIC_GCAL_WRITE=true no Vercel.
-    const calScopes = process.env.NEXT_PUBLIC_GCAL_WRITE === 'true'
-      ? 'https://www.googleapis.com/auth/calendar.events'
-      : 'https://www.googleapis.com/auth/calendar.readonly';
+    // App OAuth em produção com o escopo "calendar.events" liberado:
+    // pedimos escrita por padrão (permite criar eventos no Calendar).
+    // Interruptor de segurança: defina NEXT_PUBLIC_GCAL_WRITE=false no Vercel
+    // para voltar a só "readonly" caso o login volte a dar 403.
+    const calScopes = process.env.NEXT_PUBLIC_GCAL_WRITE === 'false'
+      ? 'https://www.googleapis.com/auth/calendar.readonly'
+      : 'https://www.googleapis.com/auth/calendar.events';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
