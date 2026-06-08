@@ -65,6 +65,12 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [cmdkOpen, setCmdkOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Restaura preferência de sidebar recolhida
+  useEffect(() => {
+    try { if (localStorage.getItem('sidebarCollapsed') === 'true') setSidebarCollapsed(true); } catch {}
+  }, []);
   const [openDropdown, setOpenDropdown] = useState<'mail' | 'bell' | 'user' | null>(null);
   const [searchPessoas, setSearchPessoas] = useState<{ id: string; nome: string; fase: string; status: string; empresa: string | null }[]>([]);
   const [searchPessoasLoading, setSearchPessoasLoading] = useState(false);
@@ -296,7 +302,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
   }, [isLider]);
 
   return (
-    <div className="app-grid">
+    <div className={`app-grid${sidebarCollapsed ? ' collapsed' : ''}`}>
       <Sidebar
         ativos={ativos}
         ativosCount={ativosCount}
@@ -306,6 +312,8 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         onConsultorClick={handleConsultorClick}
         onClearConsultor={handleClearConsultor}
         isLider={isLider}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(v => { try { localStorage.setItem('sidebarCollapsed', String(!v)); } catch {} return !v; })}
       />
 
       <main className="main">

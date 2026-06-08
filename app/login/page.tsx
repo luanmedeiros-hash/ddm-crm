@@ -3,7 +3,6 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import ShaderBackground from '@/components/ShaderBackground';
 
 function LoginInner() {
   const searchParams = useSearchParams();
@@ -37,54 +36,27 @@ function LoginInner() {
   };
 
   return (
-    <div className="login-split">
-      <aside className="login-split-visual">
-        <ShaderBackground />
-        <div className="login-split-visual-content">
-          <div className="login-split-brand">
-            <span style={{ fontSize: 20 }}>🪣</span> CRM Baldada
-          </div>
-          <div className="login-split-tagline">
-            <h1>A disciplina virou <span className="accent">número.</span></h1>
-            <p>Acompanhe o funil consultivo, a jornada de cada cliente e a performance da equipe — tudo em um só lugar.</p>
-            <div className="login-features">
-              <div className="login-feature"><span className="lf-ico">📊</span> Funil e métricas da equipe em tempo real</div>
-              <div className="login-feature"><span className="lf-ico">🗺️</span> Jornada do cliente da Análise ao Acompanhamento</div>
-              <div className="login-feature"><span className="lf-ico">📅</span> Agenda integrada ao Google Calendar</div>
-            </div>
-          </div>
-          <div className="login-split-footer">© 2026 Equipe Baldada · W1 Partner</div>
-        </div>
-      </aside>
+    <div className="login-min">
+      <div className="login-min-card">
+        <div className="login-min-logo">🪣</div>
+        <h1 className="login-min-title">CRM Baldada</h1>
+        <p className="login-min-sub">Entre para acessar seu painel</p>
 
-      <main className="login-split-form">
-        <div className="login-split-form-inner">
-          <div className="login-split-logo" style={{ width: 88, height: 88, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, lineHeight: 1 }}>🪣</div>
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={googleLoading}
+          className="login-min-google"
+        >
+          <span className="g-chip"><GoogleIcon /></span>
+          <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
+        </button>
 
-          <div className="login-split-form-header">
-            <h2>CRM Baldada</h2>
-            <p>Faça login para continuar</p>
-          </div>
+        {error && <div className="login-min-error">{error}</div>}
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={googleLoading}
-            className="login-split-google-btn"
-          >
-            <GoogleIcon />
-            <span>{googleLoading ? 'Conectando...' : 'Entrar com Google'}</span>
-          </button>
-
-          {error && <div className="login-split-error">{error}</div>}
-
-          <div className="login-split-divider" />
-
-          <div className="login-split-disclaimer">
-            Acesso restrito à equipe Baldada
-          </div>
-        </div>
-      </main>
+        <div className="login-min-foot">Acesso restrito à equipe Baldada</div>
+      </div>
+      <div className="login-min-copy">© 2026 Equipe Baldada · W1 Partner</div>
     </div>
   );
 }

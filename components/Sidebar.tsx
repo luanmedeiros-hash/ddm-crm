@@ -23,6 +23,8 @@ interface Props {
   onConsultorClick: (nome: string) => void;
   onClearConsultor?: () => void;
   isLider?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean; liderOnly?: boolean }[] = [
@@ -39,7 +41,7 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
 // Sub-abas agrupadas dentro de "Equipe" (reduz a poluição da lista lateral)
 export const EQUIPE_TABS = ['equipe', 'atencao', 'ranking', 'metas', 'produtividade'];
 
-export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false }: Props) {
+export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false, collapsed = false, onToggleCollapse }: Props) {
   const algumSelecionado = !!filtroConsultor;
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(n =>
     (!n.flag || FEATURES[n.flag]) &&
@@ -48,10 +50,20 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
   );
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="brand-card">
-        <div className="brand-logo" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, lineHeight: 1 }}>🪣</div>
+        <div className="brand-logo" style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, lineHeight: 1 }}>🪣</div>
         <div className="brand-text">CRM Baldada</div>
+        {onToggleCollapse && (
+          <button
+            className="sidebar-collapse-btn"
+            onClick={onToggleCollapse}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {collapsed ? '»' : '«'}
+          </button>
+        )}
       </div>
 
       {isLider && (
@@ -78,6 +90,7 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
             key={n.key}
             className={`nav-item ${(n.key === 'equipe' ? EQUIPE_TABS.includes(activeTab) : activeTab === n.key) ? 'active' : ''}`}
             onClick={() => onTabChange(n.key)}
+            title={collapsed ? n.label : undefined}
           >
             <Icon name={n.icon} size={16} className="nav-icon" />
             <span>{n.label}</span>
