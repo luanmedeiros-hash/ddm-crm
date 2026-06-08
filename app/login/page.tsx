@@ -22,7 +22,7 @@ function LoginInner() {
       provider: 'google',
       options: {
         redirectTo,
-        scopes: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+        scopes: 'openid email profile https://www.googleapis.com/auth/calendar.readonly',
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
