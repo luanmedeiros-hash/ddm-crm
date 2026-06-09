@@ -80,19 +80,26 @@ export default function Funil({ isLider }: { isLider: boolean }) {
     const fecharam = comAnalise.filter(pid => pessoaFase.get(pid) === 'cliente');
     const taxaFechamento = comAnalise.length ? (fecharam.length / comAnalise.length) * 100 : 0;
 
-    // Tempo médio entre etapas
-    const tempos = ETAPAS.slice(0, -1).map((e, i) => {
-      const prox = ETAPAS[i + 1];
-      const difs: number[] = [];
-      for (const etapas of porPessoa.values()) {
+    // % de clientes que tiveram reunião feita (≥1 reunião registrada)
+    const pessoasFiltradas = consultorId ? pessoas.filter(p => p.user_id === consultorId) : pessoas;
+    const clientesTotais = pessoasFiltradas.filter(p => p.fase === 'cliente');
+    const clientesComReuniao = clientesTotais.filter(p => porPessoa.has(p.id));
+    const taxaReuniaoFeita = clientesTotais.length ? (clientesComReuniao.length / clientesTotais.length) * 100 : 0;
+
+    // Tempo EXATO de cada cliente entre etapas (não a média)
+    const clientesTempos = [...porPessoa.entries()].map(([pid, etapas]) => {
+      const gaps = ETAPAS.slice(0, -1).map((e, i) => {
+        const prox = ETAPAS[i + 1];
         if (etapas[e.tipo] && etapas[prox.tipo]) {
           const d = diasEntre(etapas[e.tipo], etapas[prox.tipo]);
-          if (d >= 0) difs.push(d);
+          return d >= 0 ? d : null;
         }
-      }
-      const media = difs.length ? difs.reduce((a, b) => a + b, 0) / difs.length : null;
-      return { de: e.label, para: prox.label, media, n: difs.length };
-    });
+        return null;
+      });
+      const total = (etapas['analise'] && etapas['c4']) ? diasEntre(etapas['analise'], etapas['c4']) : null;
+      return { nome: pessoaNome.get(pid) || 'Cliente', gaps, total };
+    }).filter(c => c.gaps.some(g => g !== null) || c.total !== null)
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
     // Estagnados: clientes que não chegaram ao C4 e estão atrasados na cadência
     const hoje = new Date().toISOString().slice(0, 10);
@@ -114,7 +121,11 @@ export default function Funil({ isLider }: { isLider: boolean }) {
     }
     estagnados.sort((a, b) => b.atraso - a.atraso);
 
-    return { alcancou, taxaFechamento, fecharam: fecharam.length, comAnalise: comAnalise.length, tempos, estagnados };
+    return {
+      alcancou, taxaFechamento, fecharam: fecharam.length, comAnalise: comAnalise.length,
+      clientesTempos, estagnados,
+      taxaReuniaoFeita, clientesComReuniao: clientesComReuniao.length, clientesTotais: clientesTotais.length,
+    };
   }, [reunioes, pessoas, consultorId]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Carregando...</div>;
@@ -140,6 +151,7 @@ export default function Funil({ isLider }: { isLider: boolean }) {
         <CardKpi label="Análises realizadas" valor={dados.comAnalise} emoji="🔍" cor="var(--primary)" />
         <CardKpi label="Viraram cliente" valor={dados.fecharam} emoji="🏆" cor="#15a34a" />
         <CardKpi label="Conversão Análise→Cliente" valor={`${dados.taxaFechamento.toFixed(0)}%`} emoji="📈" cor="#a855f7" />
+        <CardKpi label="Clientes com reunião feita" valor={`${dados.taxaReuniaoFeita.toFixed(0)}%`} emoji="✅" cor="#0ea5e9" sub={`${dados.clientesComReuniao} de ${dados.clientesTotais}`} />
         <CardKpi label="Clientes estagnados" valor={dados.estagnados.length} emoji="⏳" cor={dados.estagnados.length > 0 ? '#dc2626' : '#9ca3af'} />
       </div>
 
@@ -168,23 +180,42 @@ export default function Funil({ isLider }: { isLider: boolean }) {
         <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>% = conversão em relação à etapa anterior</div>
       </div>
 
-      {/* Tempo entre etapas */}
+      {/* Tempo exato de cada cliente entre etapas */}
       <div style={card}>
-        <div style={tituloCard}>Tempo médio entre etapas <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(meta: {CADENCIA_DIAS} dias)</span></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-          {dados.tempos.map(t => {
-            const atrasado = t.media !== null && t.media > CADENCIA_DIAS;
-            return (
-              <div key={`${t.de}-${t.para}`} style={{ padding: '10px 12px', borderRadius: 9, background: 'var(--bg-soft)', border: `1px solid ${atrasado ? 'rgba(217,119,6,.35)' : 'var(--line)'}` }}>
-                <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{t.de} → {t.para}</div>
-                <div style={{ fontSize: 19, fontWeight: 800, color: atrasado ? '#d97706' : 'var(--text)', marginTop: 2 }}>
-                  {t.media !== null ? `${t.media.toFixed(0)}d` : '—'}
-                </div>
-                <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{t.n} cliente{t.n !== 1 ? 's' : ''}</div>
-              </div>
-            );
-          })}
-        </div>
+        <div style={tituloCard}>Tempo entre etapas por cliente <span style={{ fontWeight: 400, color: 'var(--muted)' }}>(meta: {CADENCIA_DIAS} dias entre cada)</span></div>
+        {dados.clientesTempos.length === 0 ? (
+          <div style={{ padding: '14px 0', color: 'var(--muted)', fontSize: 13 }}>Nenhum cliente com etapas consecutivas registradas.</div>
+        ) : (
+          <div className="dt-wrap" style={{ boxShadow: 'none' }}>
+            <table className="dt">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  {ETAPAS.slice(0, -1).map((e, i) => (
+                    <th key={e.tipo} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>{e.label}→{ETAPAS[i + 1].label}</th>
+                  ))}
+                  <th style={{ textAlign: 'center' }}>Total Aná→C4</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dados.clientesTempos.map((c, idx) => (
+                  <tr key={idx} style={{ cursor: 'default' }}>
+                    <td><span className="dt-name">{c.nome}</span></td>
+                    {c.gaps.map((g, i) => (
+                      <td key={i} style={{ textAlign: 'center', fontWeight: 600, color: g === null ? 'var(--muted-2)' : g > CADENCIA_DIAS ? '#d97706' : 'var(--text)' }}>
+                        {g === null ? '—' : `${g}d`}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center', fontWeight: 700, color: c.total === null ? 'var(--muted-2)' : 'var(--primary)' }}>
+                      {c.total === null ? '—' : `${c.total}d`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>Em âmbar: intervalo acima da meta de {CADENCIA_DIAS} dias.</div>
       </div>
 
       {/* Estagnados */}
@@ -211,11 +242,12 @@ export default function Funil({ isLider }: { isLider: boolean }) {
   );
 }
 
-function CardKpi({ label, valor, emoji, cor }: { label: string; valor: number | string; emoji: string; cor: string }) {
+function CardKpi({ label, valor, emoji, cor, sub }: { label: string; valor: number | string; emoji: string; cor: string; sub?: string }) {
   return (
     <div style={card}>
       <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>{emoji} {label}</div>
       <div style={{ fontSize: 26, fontWeight: 800, color: cor, letterSpacing: '-0.02em' }}>{valor}</div>
+      {sub && <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
