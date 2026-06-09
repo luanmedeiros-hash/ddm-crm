@@ -282,7 +282,7 @@ function addDiasIso(iso: string, dias: number): string {
 interface EtapaForm { feito: boolean; data: string }
 
 function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ nome: '', telefone: '', email: '', empresa: '', origem: '' });
+  const [form, setForm] = useState({ nome: '', telefone: '', email: '', empresa: '', origem: '', winner_contact_id: '' });
   const [dataFechamento, setDataFechamento] = useState('');
   const [etapas, setEtapas] = useState<Record<string, EtapaForm>>(
     Object.fromEntries(ETAPAS_JORNADA.map(e => [e.tipo, { feito: false, data: '' }]))
@@ -335,6 +335,7 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
       email: form.email || null,
       empresa: form.empresa || null,
       origem: form.origem || null,
+      winner_contact_id: form.winner_contact_id.trim() || null,
       fase: 'cliente',
       status: 'ativo',
       user_id: user.id,
@@ -405,6 +406,9 @@ function ModalNovoCliente({ onClose, onSaved }: { onClose: () => void; onSaved: 
             <input value={form.origem} onChange={e => setForm({ ...form, origem: e.target.value })} style={inputStyle} placeholder="Indicação, evento..." />
           </Field>
         </div>
+        <Field label="ID do cliente (W1nner)">
+          <input value={form.winner_contact_id} onChange={e => setForm({ ...form, winner_contact_id: e.target.value })} style={inputStyle} placeholder="Ex: 12345 — ID do contato no W1nner" inputMode="numeric" />
+        </Field>
 
         {/* Jornada em andamento */}
         <div style={secaoTitulo}>📍 Jornada — consultorias já realizadas</div>
