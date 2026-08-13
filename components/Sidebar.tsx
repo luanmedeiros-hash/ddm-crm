@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import Icon from './Icon';
 import Avatar from '@/app/dashboard/components/Avatar';
 import { isNovo } from '@/lib/constants';
@@ -27,7 +28,8 @@ interface Props {
   onToggleCollapse?: () => void;
 }
 
-const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean; liderOnly?: boolean }[] = [
+const ALL_NAV_ITEMS: { key: string; icon: any; label: string; href?: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean; liderOnly?: boolean }[] = [
+  { key: 'hoje', icon: 'calendar', label: 'Hoje', href: '/hoje', liderado: true },
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', liderado: true },
   { key: 'conversao', icon: 'funnel', label: 'Conversão', liderado: true },
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },
@@ -35,10 +37,10 @@ const ALL_NAV_ITEMS: { key: string; icon: any; label: string; badge?: { txt: str
   { key: 'contatos', icon: 'funnel', label: 'Leads', liderado: true },
   { key: 'funil', icon: 'funnel', label: 'Funil' },
   { key: 'historico', icon: 'history', label: 'Histórico', badge: { txt: 'Beta', cls: 'beta' }, liderado: true },
+  { key: 'comissoes', icon: 'trend', label: 'Comissões', liderado: true },
   { key: 'equipe', icon: 'team', label: 'Equipe & gestão', liderOnly: true },
 ];
 
-// Sub-abas agrupadas dentro de "Equipe" (reduz a poluição da lista lateral)
 export const EQUIPE_TABS = ['equipe', 'atencao', 'ranking', 'metas', 'produtividade'];
 
 export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsultor, onTabChange, onConsultorClick, onClearConsultor, isLider = false, collapsed = false, onToggleCollapse }: Props) {
@@ -85,18 +87,35 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
 
       <div className="nav-section-label">Menu</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {NAV_ITEMS.map(n => (
-          <div
-            key={n.key}
-            className={`nav-item ${(n.key === 'equipe' ? EQUIPE_TABS.includes(activeTab) : activeTab === n.key) ? 'active' : ''}`}
-            onClick={() => onTabChange(n.key)}
-            title={collapsed ? n.label : undefined}
-          >
-            <Icon name={n.icon} size={16} className="nav-icon" />
-            <span>{n.label}</span>
-            {n.badge && <span className={`nav-badge ${n.badge.cls}`}>{n.badge.txt}</span>}
-          </div>
-        ))}
+        {NAV_ITEMS.map(n => {
+          if (n.href) {
+            return (
+              <Link
+                key={n.key}
+                href={n.href}
+                className="nav-item"
+                title={collapsed ? n.label : undefined}
+                style={{ textDecoration: 'none' }}
+              >
+                <Icon name={n.icon} size={16} className="nav-icon" />
+                <span>{n.label}</span>
+                {n.badge && <span className={`nav-badge ${n.badge.cls}`}>{n.badge.txt}</span>}
+              </Link>
+            );
+          }
+          return (
+            <div
+              key={n.key}
+              className={`nav-item ${(n.key === 'equipe' ? EQUIPE_TABS.includes(activeTab) : activeTab === n.key) ? 'active' : ''}`}
+              onClick={() => onTabChange(n.key)}
+              title={collapsed ? n.label : undefined}
+            >
+              <Icon name={n.icon} size={16} className="nav-icon" />
+              <span>{n.label}</span>
+              {n.badge && <span className={`nav-badge ${n.badge.cls}`}>{n.badge.txt}</span>}
+            </div>
+          );
+        })}
       </div>
 
       {isLider && (<>
@@ -105,7 +124,6 @@ export default function Sidebar({ ativos, ativosCount, activeTab, filtroConsulto
         <span className="nav-badge count">{ativosCount}</span>
       </div>
 
-      {/* Item especial: TODA A EQUIPE — sempre fica no topo */}
       <div
         className={`team-item ${!algumSelecionado ? 'selected' : ''}`}
         onClick={() => onClearConsultor?.()}
