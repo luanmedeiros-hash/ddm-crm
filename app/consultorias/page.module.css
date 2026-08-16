@@ -1,0 +1,120 @@
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color .15s;
+}
+.backLink:hover { color: var(--primary); }
+
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1200px) { .kanban { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .kanban { grid-template-columns: 1fr; } }
+
+.coluna {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+}
+.colunaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.colunaTitulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+.colunaSubtitulo {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.colunaCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+}
+.colunaLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.colunaVazia {
+  color: var(--muted-2);
+  font-size: 12px;
+  text-align: center;
+  padding: 24px 0;
+  font-style: italic;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  transition: .15s;
+  cursor: pointer;
+}
+.card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.cardNome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -.005em;
+}
+.cardEmpresa {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.cardMeta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cardBadge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: rgba(220, 38, 38, .1);
+  color: var(--crit);
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: .3px;
+}
