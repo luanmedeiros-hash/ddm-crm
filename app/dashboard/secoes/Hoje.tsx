@@ -225,7 +225,7 @@ export default function Hoje() {
       </div>
 
       {perfilAberto && (
-        <PerfilCliente cliente={perfilAberto} onClose={() => { setPerfilAberto(null); carregar(); }} />
+        <PerfilCliente cliente={perfilAberto} onClose={() => setPerfilAberto(null)} onSaved={() => { setPerfilAberto(null); carregar(); }} />
       )}
     </>
   );
