@@ -8,6 +8,7 @@ import JornadaCliente from './JornadaCliente';
 import AbaAnexos from './AbaAnexos';
 import MensagensCliente from './MensagensCliente';
 import AgendarReuniao from './AgendarReuniao';
+import BotaoCopiarContexto from '@/components/BotaoCopiarContexto';
 
 // ─── Tipos ───────────────────────────────────────────────────
 interface ReuniaoRow {
@@ -137,6 +138,7 @@ export default function PerfilCliente({
               >
                 💬 Mensagem
               </button>
+              <BotaoCopiarContexto pessoaId={cliente.id} />
               <button onClick={onClose} style={btnClose}>✕</button>
             </div>
           </div>

@@ -123,15 +123,6 @@ export default function Consultorias() {
 
   return (
     <>
-      <div>
-        <div className="sec-eyebrow"><span className="eyebrow-dot"></span><span>Jornada</span></div>
-        <h1 className="sec-title">Consultorias</h1>
-        <p className="sec-sub">
-          {clientes.length === 0
-            ? 'Nenhum cliente ativo ainda.'
-            : clientes.length + ' ' + (clientes.length === 1 ? 'cliente ativo' : 'clientes ativos') + ' · agrupados pela próxima etapa'}
-        </p>
-      </div>
 
       <div style={S.kanban}>
         {COLUNAS.map(col => {
