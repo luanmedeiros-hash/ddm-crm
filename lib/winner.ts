@@ -313,3 +313,99 @@ export async function winnerListarContatos(sessionCookie: string): Promise<{ id:
   out.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return out;
 }
+// ─── Adicionar ao final de lib/winner.ts ─────────────────────
+
+// ─── Substitui as funções winnerListarPropostas e parsePropostasTable
+// em lib/winner.ts (apaga as versões anteriores e cola este)
+
+export interface WinnerProposta {
+  id:              string;
+  status:          string;
+  data_assinatura: string | null;
+  cliente:         string;
+  parceira:        string;
+  produto:         string;
+  pps:             number;
+  ap_valor:        number;
+}
+
+export async function winnerListarPropostas(
+  sessionCookie: string,
+  consultantId  = '64551',
+  pagElements   = '200',
+): Promise<WinnerProposta[] | null> {
+  const jar = parseCookieHeader(sessionCookie);
+
+  const params = new URLSearchParams({
+    'utf8':                                      '✓',
+    'search[by_structure_type][consultant_id]':  consultantId,
+    'search[by_structure_type][type]':           'only_consultant',
+    'search[status_eq]':                         '',
+    'search[page_elements]':                     pagElements,
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `${BASE}/propostas-de-produto?${params.toString()}`,
+      {
+        headers: { 'User-Agent': UA, 'Cookie': jarToHeader(jar) },
+        redirect: 'manual',
+      },
+    );
+  } catch {
+    return null;
+  }
+
+  if (res.status >= 300 && res.status < 400) return null;
+  const html = await res.text();
+  if (html.includes('consultant_person[email]')) return null;
+
+  return parsePropostasTable(html);
+}
+
+function parsePropostasTable(html: string): WinnerProposta[] {
+  // A página tem dois <tbody>: o primeiro é o resumo por status,
+  // o segundo contém os contratos individuais — usamos o segundo.
+  const allTbodies = [...html.matchAll(/<tbody[^>]*>([\s\S]*?)<\/tbody>/g)];
+  const tbody = allTbodies[1]?.[1] ?? allTbodies[0]?.[1] ?? '';
+  if (!tbody) return [];
+
+  const rows = [...tbody.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+  const result: WinnerProposta[] = [];
+
+  for (const row of rows) {
+    const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m =>
+      m[1].replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(),
+    );
+
+    // Colunas confirmadas via console do Winner:
+    // 0:id  1:status  2:dias  3:data_assinatura  4:cliente
+    // 5:cpf  6:responsavel  7:parceira  8:produto
+    // 9:ap_valor  10:pps  11:vip  12:acoes
+    if (cells.length < 10) continue;
+    const id = cells[0]?.replace(/\D/g, '').trim();
+    if (!id) continue;
+
+    const dataRaw = cells[3]?.trim();
+    const data_assinatura = dataRaw && /\d{2}\/\d{2}\/\d{4}/.test(dataRaw)
+      ? dataRaw.split('/').reverse().join('-')
+      : null;
+
+    const apRaw  = cells[9]?.replace(/[^\d,]/g, '').replace(',', '.') ?? '0';
+    const ppsRaw = cells[10]?.replace(/[^\d,]/g, '').replace(',', '.') ?? '0';
+
+    result.push({
+      id,
+      status:          cells[1]  ?? '',
+      data_assinatura,
+      cliente:         cells[4]  ?? '',
+      parceira:        cells[7]  ?? '',
+      produto:         cells[8]  ?? '',
+      pps:             parseFloat(ppsRaw) || 0,
+      ap_valor:        parseFloat(apRaw)  || 0,
+    });
+  }
+
+  return result;
+}

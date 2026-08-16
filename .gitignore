@@ -9,3 +9,5 @@ tsconfig.tsbuildinfo
 *.bak2
 .env.local
 CONTEXTO.md
+.vercel
+.env*
