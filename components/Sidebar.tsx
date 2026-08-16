@@ -30,7 +30,7 @@ interface Props {
 
 const ALL_NAV_ITEMS: { key: string; icon: any; label: string; href?: string; badge?: { txt: string; cls: string }; flag?: keyof typeof FEATURES; liderado?: boolean; liderOnly?: boolean }[] = [
   { key: 'hoje', icon: 'calendar', label: 'Hoje', href: '/hoje', liderado: true },
-  { key: 'consultorias', icon: 'trend', label: 'Consultorias', href: '/consultorias', liderado: true },
+  { key: 'consultorias', icon: 'trend', label: 'Consultorias', liderado: true },
   { key: 'dashboard', icon: 'dashboard', label: 'Dashboard', liderado: true },
   { key: 'conversao', icon: 'funnel', label: 'Conversão', liderado: true },
   { key: 'agenda', icon: 'calendar', label: 'Agenda', flag: 'GOOGLE_CALENDAR', liderado: true },

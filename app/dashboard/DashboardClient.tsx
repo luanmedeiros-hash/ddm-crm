@@ -23,8 +23,10 @@ import Metas from './secoes/Metas';
 import CentralNotificacoes from './components/CentralNotificacoes';
 import CommandPalette from './components/CommandPalette';
 import Clientes from './secoes/Clientes';
+import Consultorias from './secoes/Consultorias';
 import Contatos from './secoes/Contatos';
 import Equipe from './secoes/Equipe';
+import Comissoes from './secoes/Comissoes';
 import { FEATURES } from '@/lib/features';
 import { supabase } from '@/lib/supabase';
 
@@ -45,10 +47,12 @@ const SEC_INFO: Record<string, { titulo: string; sub: string }> = {
   agenda: { titulo: 'Agenda', sub: 'Seus eventos sincronizados do Google Calendar.' },
   'modo-daily': { titulo: 'Modo Daily', sub: 'Revisão rápida da equipe, um a um.' },
   clientes: { titulo: 'Clientes', sub: 'Sua base de clientes ativos.' },
+  consultorias: { titulo: 'Consultorias', sub: 'Etapas em andamento — C1 a acompanhamento.' },
   contatos: { titulo: 'Leads', sub: 'Seus leads em lista ou no board de pipeline — arraste para mover.' },
   metas: { titulo: 'Metas', sub: 'Metas mensais por consultor e previsão de fechamentos.' },
   produtividade: { titulo: 'Produtividade', sub: 'Carteira, reuniões e atividades por consultor no mês.' },
   equipe: { titulo: 'Equipe & gestão', sub: 'Membros, atenção, ranking, metas e produtividade da equipe.' },
+  comissoes: { titulo: 'Comissões', sub: 'Projeção de comissões e contratos ativos da sua carteira.' },
 };
 
 export default function DashboardClient({ registros, userEmail, userName, isLider, consultores }: Props) {
@@ -289,6 +293,7 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
       { key: 'conversao', label: 'Conversão', emoji: '🔻' },
       { key: 'agenda', label: 'Agenda', emoji: '📅', flag: 'GOOGLE_CALENDAR' },
       { key: 'clientes', label: 'Clientes', emoji: '👤' },
+      { key: 'consultorias', label: 'Consultorias', emoji: '📈' },
       { key: 'contatos', label: 'Leads', emoji: '🌱' },
       { key: 'atencao', label: 'Atenção', emoji: '⚠️', liderOnly: true },
       { key: 'funil', label: 'Funil', emoji: '🔄', liderOnly: true },
@@ -629,10 +634,12 @@ export default function DashboardClient({ registros, userEmail, userName, isLide
         {activeTab === 'agenda' && FEATURES.GOOGLE_CALENDAR && <Agenda filtroConsultor={filtroConsultor} />}
         {activeTab === 'modo-daily' && <ModoDaily filtered={filtered} todosRegs={registros} range={range} consultores={listaConsultores} />}
         {activeTab === 'clientes' && <Clientes isLider={isLider} />}
+        {activeTab === 'consultorias' && <Consultorias />}
         {activeTab === 'contatos' && <Contatos isLider={isLider} />}
         {activeTab === 'metas' && <Metas />}
         {activeTab === 'produtividade' && <Produtividade />}
         {activeTab === 'equipe' && <Equipe />}
+        {activeTab === 'comissoes' && <Comissoes />}
       </main>
 
       {selectedConsultor && (
